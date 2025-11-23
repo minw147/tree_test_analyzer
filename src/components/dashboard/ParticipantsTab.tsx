@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { UploadedData } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronRight, CheckCircle, XCircle, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, CheckCircle, XCircle, Search, ChevronLeft } from "lucide-react";
 
 interface ParticipantsTabProps {
     data: UploadedData;
@@ -11,6 +11,8 @@ interface ParticipantsTabProps {
 export function ParticipantsTab({ data }: ParticipantsTabProps) {
     const [expandedParticipants, setExpandedParticipants] = useState<Set<string>>(new Set());
     const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 20;
 
     const toggleParticipant = (participantId: string) => {
         setExpandedParticipants(prev => {
@@ -52,6 +54,17 @@ export function ParticipantsTab({ data }: ParticipantsTabProps) {
             participant.id.toLowerCase().includes(query)
         );
     }, [participantStats, searchQuery]);
+
+    // Reset to page 1 when search query changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
+
+    const totalPages = Math.ceil(filteredParticipants.length / ITEMS_PER_PAGE);
+    const paginatedParticipants = filteredParticipants.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    const startItem = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+    const endItem = Math.min(currentPage * ITEMS_PER_PAGE, filteredParticipants.length);
 
     const formatDuration = (seconds: number | null) => {
         if (!seconds) return "N/A";
@@ -131,133 +144,137 @@ export function ParticipantsTab({ data }: ParticipantsTabProps) {
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Status</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Started</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Duration</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Success Rate</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Directness</th>
+                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">Success Rate</th>
+                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">Directness</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredParticipants.map(({ participant, successRate, directnessRate }, index) => (
-                                    <>
-                                        <tr
-                                            key={participant.id}
-                                            onClick={() => toggleParticipant(participant.id)}
-                                            className="cursor-pointer border-b transition-colors hover:bg-gray-50"
-                                        >
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-2">
-                                                    {expandedParticipants.has(participant.id) ? (
-                                                        <ChevronDown className="h-4 w-4 text-gray-400" />
-                                                    ) : (
-                                                        <ChevronRight className="h-4 w-4 text-gray-400" />
-                                                    )}
-                                                    <span className="font-medium text-sm">
-                                                        Participant {index + 1}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-1">
-                                                    {participant.status === "Completed" ? (
-                                                        <>
-                                                            <CheckCircle className="h-4 w-4 text-green-500" />
-                                                            <span className="text-sm text-green-600">Completed</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <XCircle className="h-4 w-4 text-gray-400" />
-                                                            <span className="text-sm text-gray-500">Abandoned</span>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">
-                                                {formatDate(participant.startedAt)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">
-                                                {formatDuration(participant.durationSeconds)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm font-medium">{successRate}%</td>
-                                            <td className="px-4 py-3 text-sm font-medium">{directnessRate}%</td>
-                                        </tr>
-
-                                        {/* Expanded Details */}
-                                        {expandedParticipants.has(participant.id) && (
-                                            <tr>
-                                                <td colSpan={6} className="bg-gray-50 px-4 py-4">
-                                                    <div className="space-y-4">
-                                                        {/* Participant Info */}
-                                                        <div className="grid grid-cols-3 gap-4 rounded-lg border bg-white p-4">
-                                                            <div>
-                                                                <div className="text-xs text-gray-500">Participant ID</div>
-                                                                <div className="font-mono text-sm font-medium">{participant.id}</div>
-                                                            </div>
-                                                            <div>
-                                                                <div className="text-xs text-gray-500">Duration</div>
-                                                                <div className="text-sm font-medium">
-                                                                    {formatDuration(participant.durationSeconds)}
-                                                                </div>
-                                                            </div>
-                                                            <div>
-                                                                <div className="text-xs text-gray-500">Timeline</div>
-                                                                <div className="text-xs">
-                                                                    <div>Started {formatDate(participant.startedAt)}</div>
-                                                                    {participant.completedAt && (
-                                                                        <div className="text-green-600">
-                                                                            Completed {formatDate(participant.completedAt)}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Task Results Table */}
-                                                        <div className="overflow-x-auto rounded-lg border bg-white">
-                                                            <table className="w-full text-sm">
-                                                                <thead className="border-b bg-gray-50">
-                                                                    <tr>
-                                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Task</th>
-                                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Result</th>
-                                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Path Taken</th>
-                                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Confidence</th>
-                                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {participant.taskResults.map((result, taskIdx) => (
-                                                                        <tr key={taskIdx} className="border-b last:border-0">
-                                                                            <td className="px-4 py-3 font-medium">T{result.taskIndex}</td>
-                                                                            <td className="px-4 py-3">{getResultBadge(result)}</td>
-                                                                            <td className="px-4 py-3">
-                                                                                <span className="font-mono text-xs text-gray-600">
-                                                                                    {result.pathTaken || "N/A"}
-                                                                                </span>
-                                                                            </td>
-                                                                            <td className="px-4 py-3">
-                                                                                {result.confidenceRating ? (
-                                                                                    <span className="text-xs">
-                                                                                        {result.confidenceRating}/7{" "}
-                                                                                        <span className="text-gray-500">
-                                                                                            {result.confidenceRating >= 6 ? "High" : result.confidenceRating >= 4 ? "Med" : "Low"}
-                                                                                        </span>
-                                                                                    </span>
-                                                                                ) : (
-                                                                                    <span className="text-xs text-gray-400">N/A</span>
-                                                                                )}
-                                                                            </td>
-                                                                            <td className="px-4 py-3 text-xs text-gray-600">
-                                                                                {result.completionTimeSeconds}s
-                                                                            </td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
+                                {paginatedParticipants.map(({ participant, successRate, directnessRate }, index) => {
+                                    // Calculate actual index based on pagination for display
+                                    const actualIndex = (currentPage - 1) * ITEMS_PER_PAGE + index + 1;
+                                    return (
+                                        <>
+                                            <tr
+                                                key={participant.id}
+                                                onClick={() => toggleParticipant(participant.id)}
+                                                className="cursor-pointer border-b transition-colors hover:bg-gray-50"
+                                            >
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        {expandedParticipants.has(participant.id) ? (
+                                                            <ChevronDown className="h-4 w-4 text-gray-400" />
+                                                        ) : (
+                                                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                                                        )}
+                                                        <span className="font-medium text-sm">
+                                                            Participant {actualIndex}
+                                                        </span>
                                                     </div>
                                                 </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-1">
+                                                        {participant.status === "Completed" ? (
+                                                            <>
+                                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                                <span className="text-sm text-green-600">Completed</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <XCircle className="h-4 w-4 text-gray-400" />
+                                                                <span className="text-sm text-gray-500">Abandoned</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-600">
+                                                    {formatDate(participant.startedAt)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-600">
+                                                    {formatDuration(participant.durationSeconds)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm font-medium text-center">{successRate}%</td>
+                                                <td className="px-4 py-3 text-sm font-medium text-center">{directnessRate}%</td>
                                             </tr>
-                                        )}
-                                    </>
-                                ))}
+
+                                            {/* Expanded Details */}
+                                            {expandedParticipants.has(participant.id) && (
+                                                <tr>
+                                                    <td colSpan={6} className="bg-gray-50 px-4 py-4">
+                                                        <div className="space-y-4">
+                                                            {/* Participant Info */}
+                                                            <div className="grid grid-cols-3 gap-4 rounded-lg border bg-white p-4">
+                                                                <div>
+                                                                    <div className="text-xs text-gray-500">Participant ID</div>
+                                                                    <div className="font-mono text-sm font-medium">{participant.id}</div>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-xs text-gray-500">Duration</div>
+                                                                    <div className="text-sm font-medium">
+                                                                        {formatDuration(participant.durationSeconds)}
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-xs text-gray-500">Timeline</div>
+                                                                    <div className="text-xs">
+                                                                        <div>Started {formatDate(participant.startedAt)}</div>
+                                                                        {participant.completedAt && (
+                                                                            <div className="text-green-600">
+                                                                                Completed {formatDate(participant.completedAt)}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Task Results Table */}
+                                                            <div className="overflow-x-auto rounded-lg border bg-white">
+                                                                <table className="w-full text-sm">
+                                                                    <thead className="border-b bg-gray-50">
+                                                                        <tr>
+                                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Task</th>
+                                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Result</th>
+                                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Path Taken</th>
+                                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Confidence</th>
+                                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {participant.taskResults.map((result, taskIdx) => (
+                                                                            <tr key={taskIdx} className="border-b last:border-0">
+                                                                                <td className="px-4 py-3 font-medium">T{result.taskIndex}</td>
+                                                                                <td className="px-4 py-3">{getResultBadge(result)}</td>
+                                                                                <td className="px-4 py-3">
+                                                                                    <span className="font-mono text-xs text-gray-600">
+                                                                                        {result.pathTaken || "N/A"}
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td className="px-4 py-3">
+                                                                                    {result.confidenceRating ? (
+                                                                                        <span className="text-xs">
+                                                                                            {result.confidenceRating}/7{" "}
+                                                                                            <span className="text-gray-500">
+                                                                                                {result.confidenceRating >= 6 ? "High" : result.confidenceRating >= 4 ? "Med" : "Low"}
+                                                                                            </span>
+                                                                                        </span>
+                                                                                    ) : (
+                                                                                        <span className="text-xs text-gray-400">N/A</span>
+                                                                                    )}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-xs text-gray-600">
+                                                                                    {result.completionTimeSeconds}s
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -265,6 +282,34 @@ export function ParticipantsTab({ data }: ParticipantsTabProps) {
                     {filteredParticipants.length === 0 && (
                         <div className="py-12 text-center text-sm text-gray-500">
                             No participants found matching your search.
+                        </div>
+                    )}
+
+                    {/* Pagination Controls */}
+                    {filteredParticipants.length > ITEMS_PER_PAGE && (
+                        <div className="flex items-center justify-between border-t p-4">
+                            <div className="text-sm text-gray-500">
+                                Showing {startItem}-{endItem} of {filteredParticipants.length} participants
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </button>
+                                <span className="text-sm font-medium">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </button>
+                            </div>
                         </div>
                     )}
                 </CardContent>

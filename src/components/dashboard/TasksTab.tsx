@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
-import type { UploadedData } from "@/lib/types";
+import { useMemo, useState, useEffect } from "react";
+import type { UploadedData, Participant } from "@/lib/types";
 import { calculateTaskStats } from "@/lib/stats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart } from "@/components/ui/pie-chart";
 import { BoxPlot } from "@/components/ui/box-plot";
-
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Users, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TasksTabProps {
     data: UploadedData;
@@ -68,18 +67,27 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
             <div className="flex-1 space-y-6">
                 <Card>
                     <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                        <div className="space-y-2">
-                            <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-blue-100 text-blue-800 hover:bg-blue-200">
-                                Task {selectedTask.index}
-                            </div>
-                            <CardTitle className="text-xl font-medium leading-relaxed text-gray-900">
-                                {selectedTask.description}
-                            </CardTitle>
-                            {selectedTask.expectedAnswer && (
-                                <div className="mt-1 text-sm text-gray-500">
-                                    <span className="font-medium text-gray-700">Expected Path:</span> {selectedTask.expectedAnswer}
+                        <div className="space-y-4 flex-1">
+                            <div className="space-y-2">
+                                <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-2 border-transparent bg-blue-100 text-blue-800 hover:bg-blue-200">
+                                    Task {selectedTask.index}
                                 </div>
-                            )}
+                                <CardTitle className="text-xl font-medium leading-relaxed text-gray-900">
+                                    {selectedTask.description}
+                                </CardTitle>
+                            </div>
+
+                            <div className="flex items-end justify-between">
+                                {selectedTask.expectedAnswer && (
+                                    <div className="text-sm text-gray-500 max-w-[80%]">
+                                        <span className="font-medium text-gray-700">Expected Path:</span> {selectedTask.expectedAnswer}
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2 text-gray-500">
+                                    <Users className="h-5 w-5" />
+                                    <span className="text-lg font-semibold">{totalParticipants}</span>
+                                </div>
+                            </div>
                         </div>
                         <div className="relative ml-4 flex-shrink-0">
                             <button
@@ -181,8 +189,14 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                 </Card>
 
                 {/* Detailed Tables */}
-                {/* Detailed Tables */}
                 <div className="space-y-8">
+                    {/* Participant Paths */}
+                    <ParticipantPathsCard
+                        participants={data.participants}
+                        taskId={selectedTaskId}
+                        totalParticipants={totalParticipants}
+                    />
+
                     {/* First-Clicked Parent Labels */}
                     <Card>
                         <CardHeader>
@@ -198,8 +212,8 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                                             <tr className="border-b text-left">
                                                 <th className="pb-2 font-medium text-gray-500">Path</th>
                                                 <th className="pb-2 font-medium text-gray-500">Correct First Click</th>
-                                                <th className="pb-2 font-medium text-gray-500">Clicked First</th>
-                                                <th className="pb-2 font-medium text-gray-500">Clicked During Task</th>
+                                                <th className="pb-2 font-medium text-gray-500 text-center">Clicked First</th>
+                                                <th className="pb-2 font-medium text-gray-500 text-center">Clicked During Task</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -211,10 +225,10 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                                                             {click.isCorrect ? "Yes" : "No"}
                                                         </span>
                                                     </td>
-                                                    <td className="py-2">
+                                                    <td className="py-2 text-center">
                                                         {click.firstClickCount} ({click.firstClickPercentage}%)
                                                     </td>
-                                                    <td className="py-2">
+                                                    <td className="py-2 text-center">
                                                         {click.totalClickCount} ({click.totalClickPercentage}%)
                                                     </td>
                                                 </tr>
@@ -240,16 +254,16 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                                         <thead>
                                             <tr className="border-b text-left">
                                                 <th className="pb-2 font-medium text-gray-500">Path</th>
-                                                <th className="pb-2 font-medium text-gray-500">Count</th>
-                                                <th className="pb-2 font-medium text-gray-500">%</th>
+                                                <th className="pb-2 font-medium text-gray-500 text-center">Count</th>
+                                                <th className="pb-2 font-medium text-gray-500 text-center">%</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {selectedTask.stats.incorrectDestinations.map((dest, i) => (
                                                 <tr key={i} className="border-b last:border-0">
                                                     <td className="py-2 font-mono text-xs">{dest.path}</td>
-                                                    <td className="py-2">{dest.count}</td>
-                                                    <td className="py-2">{dest.percentage}%</td>
+                                                    <td className="py-2 text-center">{dest.count}</td>
+                                                    <td className="py-2 text-center">{dest.percentage}%</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -275,7 +289,7 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                                                 <tr className="border-b text-left">
                                                     <th className="pb-2 font-medium text-gray-500 w-32">Answer</th>
                                                     <th className="pb-2 font-medium text-gray-500">Outcome Breakdown</th>
-                                                    <th className="pb-2 font-medium text-gray-500 w-24 text-right">Frequency</th>
+                                                    <th className="pb-2 font-medium text-gray-500 w-24 text-center">Frequency</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -346,7 +360,7 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                                                                     <span className="text-gray-400 text-xs">No data</span>
                                                                 )}
                                                             </td>
-                                                            <td className="py-3 text-right font-medium">{rating.count}</td>
+                                                            <td className="py-3 text-center font-medium">{rating.count}</td>
                                                         </tr>
                                                     );
                                                 })}
@@ -380,5 +394,182 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                 </div>
             </div>
         </div>
+    );
+}
+
+function ParticipantPathsCard({ participants, taskId, totalParticipants }: { participants: Participant[], taskId: string, totalParticipants: number }) {
+    const [pathFilter, setPathFilter] = useState<string>("all");
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 20;
+
+    const pathsData = useMemo(() => {
+        const pathMap = new Map<string, {
+            path: string;
+            count: number;
+            resultType: string;
+            resultColor: string;
+        }>();
+
+        participants.forEach(p => {
+            const result = p.taskResults.find(r => r.taskId === taskId);
+            if (!result) return;
+
+            const path = result.pathTaken || "";
+
+            // Determine Result Type
+            let resultType = "";
+            let resultColor = "";
+
+            if (result.skipped) {
+                const parts = path.split('/').filter(Boolean);
+                if (parts.length <= 1) {
+                    resultType = "Direct Skip";
+                    resultColor = "bg-gray-400";
+                } else {
+                    resultType = "Indirect Skip";
+                    resultColor = "bg-gray-500";
+                }
+            } else if (result.successful) {
+                if (result.directPathTaken) {
+                    resultType = "Direct Success";
+                    resultColor = "bg-green-600";
+                } else {
+                    resultType = "Indirect Success";
+                    resultColor = "bg-green-300";
+                }
+            } else {
+                if (result.directPathTaken) {
+                    resultType = "Direct Fail";
+                    resultColor = "bg-red-600";
+                } else {
+                    resultType = "Indirect Fail";
+                    resultColor = "bg-red-300";
+                }
+            }
+
+            const key = path + "||" + resultType;
+
+            if (!pathMap.has(key)) {
+                pathMap.set(key, {
+                    path,
+                    count: 0,
+                    resultType,
+                    resultColor
+                });
+            }
+            pathMap.get(key)!.count++;
+        });
+
+        return Array.from(pathMap.values()).sort((a, b) => b.count - a.count);
+    }, [participants, taskId]);
+
+    const filteredPaths = useMemo(() => {
+        if (pathFilter === "all") return pathsData;
+        // Handle "Skip" group if needed, or just exact match
+        if (pathFilter === "Skip") return pathsData.filter(p => p.resultType.includes("Skip"));
+        return pathsData.filter(p => p.resultType === pathFilter);
+    }, [pathsData, pathFilter]);
+
+    // Reset to page 1 when filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [pathFilter]);
+
+    const totalPages = Math.ceil(filteredPaths.length / ITEMS_PER_PAGE);
+    const paginatedPaths = filteredPaths.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    const startItem = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+    const endItem = Math.min(currentPage * ITEMS_PER_PAGE, filteredPaths.length);
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg">Participant Paths</CardTitle>
+                <div className="relative">
+                    <select
+                        className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={pathFilter}
+                        onChange={(e) => setPathFilter(e.target.value)}
+                    >
+                        <option value="all">All Results</option>
+                        <option value="Direct Success">Direct Success</option>
+                        <option value="Indirect Success">Indirect Success</option>
+                        <option value="Direct Fail">Direct Fail</option>
+                        <option value="Indirect Fail">Indirect Fail</option>
+                        <option value="Direct Skip">Direct Skip</option>
+                        <option value="Indirect Skip">Indirect Skip</option>
+                    </select>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b text-left">
+                                <th className="pb-2 font-medium text-gray-500 w-40">Result</th>
+                                <th className="pb-2 font-medium text-gray-500 w-32 text-center"># of Participants</th>
+                                <th className="pb-2 font-medium text-gray-500">Path</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {paginatedPaths.map((item, i) => (
+                                <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
+                                    <td className="py-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`h-2.5 w-2.5 rounded-full ${item.resultColor}`}></div>
+                                            <span className="font-medium text-gray-700">{item.resultType}</span>
+                                        </div>
+                                    </td>
+                                    <td className="py-3 text-center">
+                                        <span className="font-medium">{item.count}</span>
+                                        <span className="text-gray-500 ml-1">({Math.round((item.count / totalParticipants) * 100)}%)</span>
+                                    </td>
+                                    <td className="py-3">
+                                        <div className="font-mono text-xs text-gray-600 break-all">
+                                            {item.path.split('/').filter(Boolean).join(' > ') || "(No path taken)"}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {paginatedPaths.length === 0 && (
+                                <tr>
+                                    <td colSpan={3} className="py-4 text-center text-gray-500">
+                                        No paths found matching filter.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination Controls */}
+                {filteredPaths.length > ITEMS_PER_PAGE && (
+                    <div className="flex items-center justify-between border-t pt-4 mt-4">
+                        <div className="text-sm text-gray-500">
+                            Showing {startItem}-{endItem} of {filteredPaths.length} paths
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            <span className="text-sm font-medium">
+                                Page {currentPage} of {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }

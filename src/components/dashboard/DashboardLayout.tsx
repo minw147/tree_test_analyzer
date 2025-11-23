@@ -2,10 +2,11 @@ import { useState } from "react";
 import type { UploadedData } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { BarChart3, PieChart as PieChartIcon, Network, GitGraph, Activity, LogOut, HelpCircle, Users } from "lucide-react";
+import { BarChart3, PieChart as PieChartIcon, Network, Activity, LogOut, HelpCircle, Users } from "lucide-react";
 import { OverviewTab } from "./OverviewTab";
 import { TasksTab } from "./TasksTab";
 import { ParticipantsTab } from "./ParticipantsTab";
+import { PietreeTab } from "./PietreeTab";
 import { HelpView } from "../HelpView";
 
 interface DashboardLayoutProps {
@@ -46,7 +47,7 @@ export function DashboardLayout({ data, onReset }: DashboardLayoutProps) {
 
             <main className="container mx-auto p-4 py-8">
                 <Tabs className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-3 lg:w-[750px] lg:grid-cols-5">
+                    <TabsList className="grid w-full grid-cols-3 lg:w-[600px] lg:grid-cols-4">
                         <TabsTrigger value="overview" isActive={activeTab === "overview"} onClick={() => setActiveTab("overview")}>
                             <BarChart3 className="mr-2 h-4 w-4" />
                             Overview
@@ -63,10 +64,6 @@ export function DashboardLayout({ data, onReset }: DashboardLayoutProps) {
                             <Network className="mr-2 h-4 w-4" />
                             Pietree
                         </TabsTrigger>
-                        <TabsTrigger value="sankey" isActive={activeTab === "sankey"} onClick={() => setActiveTab("sankey")}>
-                            <GitGraph className="mr-2 h-4 w-4" />
-                            Sankey
-                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="overview" activeValue={activeTab}>
@@ -82,15 +79,7 @@ export function DashboardLayout({ data, onReset }: DashboardLayoutProps) {
                     </TabsContent>
 
                     <TabsContent value="pietree" activeValue={activeTab}>
-                        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed bg-white">
-                            <p className="text-gray-500">Pietree visualization coming soon</p>
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="sankey" activeValue={activeTab}>
-                        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed bg-white">
-                            <p className="text-gray-500">Sankey visualization coming soon</p>
-                        </div>
+                        <PietreeTab data={data} />
                     </TabsContent>
                 </Tabs>
             </main>

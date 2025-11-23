@@ -43,14 +43,38 @@ export function PieChart({ data }: PieChartProps) {
 
         const g = svg.append("g").attr("transform", `translate(${width / 2},${height / 2})`);
 
-        const path = g.selectAll("path").data(pie(data)).enter().append("path");
+        // Calculate total for percentages
+        const total = data.reduce((acc, curr) => acc + curr.value, 0);
 
-        path
+        const arcs = g.selectAll("arc")
+            .data(pie(data))
+            .enter()
+            .append("g")
+            .attr("class", "arc");
+
+        arcs.append("path")
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .attr("d", arc as any)
             .attr("fill", (d) => colorMap[d.data.color as keyof typeof colorMap] || d.data.color)
             .attr("stroke", "white")
             .attr("stroke-width", 2);
+
+        // Add labels
+        arcs.append("text")
+            .attr("transform", (d) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return `translate(${arc.centroid(d as any)})`;
+            })
+            .attr("text-anchor", "middle")
+            .attr("dy", ".35em")
+            .text((d) => {
+                const percent = (d.data.value / total) * 100;
+                return Math.round(percent) > 0 ? `${Math.round(percent)}%` : "";
+            })
+            .style("fill", "white")
+            .style("font-size", "10px")
+            .style("font-weight", "bold")
+            .style("pointer-events", "none");
     }, [data]);
 
     return <svg ref={svgRef} viewBox="0 0 192 192" className="h-full w-full" />;
