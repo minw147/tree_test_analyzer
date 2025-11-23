@@ -1,0 +1,20 @@
+Home
+  Products
+    Electronics
+      Laptops
+      Smartphones
+      Accessories
+    Clothing
+      Men
+        Shirts
+        Pants
+      Women
+        Dresses
+        Shoes
+  Services
+    Consulting
+    Support
+  About Us
+    Team
+    Careers
+  Contact
