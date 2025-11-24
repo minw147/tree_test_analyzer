@@ -312,7 +312,7 @@ export function PietreeTab({ data }: PietreeTabProps) {
             .attr("x2", d => (d.target as TreeNode).x!)
             .attr("y2", d => (d.target as TreeNode).y!)
             .attr("stroke-width", d => Math.max(2, (d.value / totalParticipants) * maxLinkThickness)) // Dynamic thickness
-            .attr("stroke", d => d.isCorrectPath ? "#22c55e" : "#d1d5db");
+            .attr("stroke", d => d.isCorrectPath ? "#22c55e" : "#6b7280");
 
         // Render Nodes (Pie Charts)
         const node = g.append("g")
@@ -650,7 +650,7 @@ export function PietreeTab({ data }: PietreeTabProps) {
                             <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-gray-300"></div> Skipped</div>
                             <div className="font-semibold mt-3 mb-1">Links</div>
                             <div className="flex items-center gap-2"><div className="w-8 h-1 bg-green-500/50"></div> Correct Path</div>
-                            <div className="flex items-center gap-2"><div className="w-8 h-1 bg-gray-300"></div> Incorrect Path</div>
+                            <div className="flex items-center gap-2"><div className="w-8 h-1 bg-gray-500"></div> Incorrect Path</div>
                         </div>
                     </div>
                 </CardContent>
