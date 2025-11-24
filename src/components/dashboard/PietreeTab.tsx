@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import * as d3 from "d3";
-import type { UploadedData } from "@/lib/types";
+import type { UploadedData, Item } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Maximize, ChevronDown } from "lucide-react";
@@ -83,113 +83,121 @@ export function PietreeTab({ data }: PietreeTabProps) {
         const nodesMap = new Map<string, TreeNode>();
         const linksMap = new Map<string, TreeLink>();
 
-        // Helper to get or create node
-        const getNode = (path: string, name: string): TreeNode => {
-            if (!nodesMap.has(path)) {
-                // Calculate parent ID from path
-                const parts = path.split('/').filter(Boolean);
+        // Helper to get/create node based on CANONICAL path
+        const getCanonicalNode = (canonicalPath: string, name: string) => {
+            if (!nodesMap.has(canonicalPath)) {
+                // Calculate parent ID from path structure
+                const parts = canonicalPath.split('/').filter(Boolean);
                 let parentId: string | undefined = undefined;
                 if (parts.length > 1) {
-                    // Reconstruct parent path
                     const parentParts = parts.slice(0, -1);
                     parentId = '/' + parentParts.join('/');
-                    // Handle root case if parent is just "/" which might not match logic depending on root naming
-                    // But here root is usually /Home. /Home/Products -> parent /Home. Correct.
                 }
 
-                nodesMap.set(path, {
-                    id: path,
+                nodesMap.set(canonicalPath, {
+                    id: canonicalPath,
                     name: name,
-                    path: path,
-                    stats: { rightPath: 0, wrongPath: 0, back: 0, nominated: 0, skipped: 0, total: 0 },
-                    x: 0,
-                    y: 0,
-                    parentId: parentId // Add parentId for tree layout
-                } as TreeNode);
+                    path: canonicalPath,
+                    stats: { total: 0, rightPath: 0, wrongPath: 0, back: 0, nominated: 0, skipped: 0 },
+                    x: 0, y: 0,
+                    parentId: parentId
+                });
             }
-            return nodesMap.get(path)!;
+            return nodesMap.get(canonicalPath)!;
         };
 
-        // Initialize root
-        const rootPath = data.treeStructure?.[0]?.name ? `/${data.treeStructure[0].name}` : "/Home";
-        const rootName = data.treeStructure?.[0]?.name || "Home";
-        getNode(rootPath, rootName);
+        // Build set of valid paths from tree structure
+        const validPaths = new Set<string>();
+        const traverseTree = (items: Item[], parentPath = "") => {
+            items.forEach(item => {
+                const path = parentPath ? `${parentPath}/${item.name}` : `/${item.name}`;
+                validPaths.add(path.toLowerCase());
+                if (item.children) traverseTree(item.children, path);
+            });
+        };
+        if (data.treeStructure) {
+            traverseTree(data.treeStructure);
+        }
 
         // Expected path set for quick lookup
-        const expectedPath = selectedTask.expectedAnswer || "";
-        const normalizedExpected = expectedPath.toLowerCase();
+        const expectedPaths = (selectedTask.expectedAnswer || "").split(",").map(p => p.trim().toLowerCase());
 
         // Process each participant
         data.participants.forEach(p => {
             const result = p.taskResults.find(r => r.taskId === selectedTask.id);
             if (!result) return;
 
-            const pathStr = result.pathTaken;
-
-            // Handle empty path or immediate skip at root
-            if (!pathStr) {
-                if (result.skipped) {
-                    const root = getNode(rootPath, rootName);
-                    root.stats.skipped++;
-                    root.stats.total++;
-                }
-                return;
-            }
-
+            const pathStr = result.pathTaken || "";
             const parts = pathStr.split('/').filter(Boolean);
 
             if (parts.length === 0) {
-                if (result.skipped) {
-                    const root = getNode(rootPath, rootName);
-                    root.stats.skipped++;
-                    root.stats.total++;
-                }
                 return;
             }
 
-            let currentPath = "";
+            let currentCanonicalPath = "";
             let prevNode: TreeNode | null = null;
 
             parts.forEach((part, i) => {
-                const name = part;
-                currentPath += `/${name}`;
-                const node = getNode(currentPath, name);
-
-                node.stats.total++;
-
                 const isLast = i === parts.length - 1;
-                const isCorrectSoFar = normalizedExpected.startsWith(currentPath.toLowerCase());
 
-                if (isLast) {
-                    if (result.skipped) {
-                        node.stats.skipped++;
-                    } else {
-                        node.stats.nominated++;
-                    }
+                // Determine next canonical path
+                const forwardPath = currentCanonicalPath ? `${currentCanonicalPath}/${part}` : `/${part}`;
+                let nextPath = "";
+                let isBacktrack = false;
+
+                // Check if valid forward
+                if (validPaths.has(forwardPath.toLowerCase())) {
+                    nextPath = forwardPath;
                 } else {
-                    // Intermediate node
-                    if (isCorrectSoFar) {
-                        node.stats.rightPath++;
+                    // Check for backtrack (is 'part' an ancestor?)
+                    const currentSegments = currentCanonicalPath.split('/').filter(Boolean);
+                    const index = currentSegments.lastIndexOf(part);
+
+                    if (index !== -1 && index < currentSegments.length - 1) {
+                        // It is an ancestor
+                        nextPath = "/" + currentSegments.slice(0, index + 1).join("/");
+                        isBacktrack = true;
                     } else {
-                        node.stats.wrongPath++;
+                        // Fallback: treat as forward
+                        nextPath = forwardPath;
                     }
                 }
 
-                // Create Link
+                const node = getCanonicalNode(nextPath, part);
+                node.stats.total++;
+
                 if (prevNode) {
-                    const linkId = `${prevNode.path}->${node.path}`;
+                    if (isBacktrack) {
+                        prevNode.stats.back++;
+                    } else {
+                        // Forward move
+                        const isCorrectStep = expectedPaths.some(p => p.startsWith(nextPath.toLowerCase()));
+                        if (isCorrectStep) {
+                            prevNode.stats.rightPath++;
+                        } else {
+                            prevNode.stats.wrongPath++;
+                        }
+                    }
+
+                    const linkId = `${prevNode.id}->${node.id}`;
                     if (!linksMap.has(linkId)) {
                         linksMap.set(linkId, {
                             source: prevNode.id,
                             target: node.id,
                             value: 0,
-                            isCorrectPath: isCorrectSoFar
+                            isCorrectPath: !isBacktrack && expectedPaths.some(p => p.startsWith(nextPath.toLowerCase()))
                         });
                     }
                     linksMap.get(linkId)!.value++;
                 }
 
+                currentCanonicalPath = nextPath;
                 prevNode = node;
+
+                if (isLast) {
+                    if (result.skipped) node.stats.skipped++;
+                    else node.stats.nominated++;
+                }
             });
         });
 
@@ -399,7 +407,7 @@ export function PietreeTab({ data }: PietreeTabProps) {
                 .attr("transform", d => `translate(${d.x},${d.y})`);
         }
 
-        function dragstarted(event: any, d: TreeNode) {
+        function dragstarted(_event: any, d: TreeNode) {
             if (layoutMode === 'force' && simulation) {
                 // if (!event.active) simulation.alphaTarget(0.3).restart();
             }
@@ -418,7 +426,7 @@ export function PietreeTab({ data }: PietreeTabProps) {
             ticked();
         }
 
-        function dragended(event: any, d: TreeNode) {
+        function dragended(event: any, _d: TreeNode) {
             if (layoutMode === 'force' && simulation) {
                 if (!event.active) simulation.alphaTarget(0);
             }
@@ -541,7 +549,19 @@ export function PietreeTab({ data }: PietreeTabProps) {
                             </div>
                             {selectedTask && (
                                 <div className="text-sm text-muted-foreground break-words min-w-0">
-                                    <strong>Expected Path:</strong> {selectedTask.expectedAnswer}
+                                    <strong>Expected Path{selectedTask.expectedAnswer.includes(",") ? "s" : ""}:</strong>
+                                    {selectedTask.expectedAnswer.includes(",") ? (
+                                        <div className="flex flex-col gap-1 mt-1">
+                                            {selectedTask.expectedAnswer.split(",").map((path, i) => (
+                                                <div key={i} className="flex items-center gap-2">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></span>
+                                                    <span>{path.trim()}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <span className="ml-2">{selectedTask.expectedAnswer}</span>
+                                    )}
                                 </div>
                             )}
                         </div>

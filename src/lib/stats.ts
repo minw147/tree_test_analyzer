@@ -76,11 +76,15 @@ export function calculateOverviewStats(data: UploadedData): TreeTestOverviewStat
 export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[] {
     return data.tasks.map(task => {
         // Gather all results for this task
-        const taskResults = data.participants.flatMap(p =>
+        const rawTaskResults = data.participants.flatMap(p =>
             p.taskResults.filter(r => r.taskIndex === task.index)
         );
 
-        if (taskResults.length === 0) {
+        // Determine expected paths first
+        const expectedAnswers = task.expectedAnswer.split(",").map(a => a.trim());
+        const normalizedExpectedAnswers = expectedAnswers.map(a => a.toLowerCase());
+
+        if (rawTaskResults.length === 0) {
             return {
                 ...task,
                 maxTimeSeconds: null,
@@ -97,9 +101,36 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
                     parentClicks: [],
                     incorrectDestinations: [],
                     confidenceRatings: [],
+                    pathDistribution: [],
                 }
             };
         }
+
+        // Calculate path distribution and update success status based on expected answers
+        const pathCounts = new Map<string, number>();
+        expectedAnswers.forEach(path => pathCounts.set(path, 0));
+
+        const taskResults = rawTaskResults.map(r => {
+            const normalizedPath = r.pathTaken.toLowerCase();
+
+            // Strict match is better for tree testing usually
+            const isCorrect = normalizedExpectedAnswers.includes(normalizedPath);
+
+            if (isCorrect) {
+                const matchedIndex = normalizedExpectedAnswers.indexOf(normalizedPath);
+                if (matchedIndex !== -1) {
+                    const originalPath = expectedAnswers[matchedIndex];
+                    pathCounts.set(originalPath, (pathCounts.get(originalPath) || 0) + 1);
+                }
+
+                // If not already successful, mark as successful
+                // We preserve directness from the original result if possible
+                if (!r.successful) {
+                    return { ...r, successful: true };
+                }
+            }
+            return r;
+        });
 
         const totalCount = taskResults.length;
         const successCount = taskResults.filter(r => r.successful).length;
@@ -129,6 +160,15 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
 
         const score = Math.round(successRate * 0.7 + directnessRate * 0.3);
 
+        // Path Distribution Stats
+        const pathDistribution = Array.from(pathCounts.entries())
+            .map(([path, count]) => ({
+                path,
+                count,
+                percentage: totalCount > 0 ? Math.round((count / totalCount) * 100) : 0
+            }))
+            .sort((a, b) => b.count - a.count);
+
         // Parent Clicks Analysis
         const nonSkippedResults = taskResults.filter(r => !r.skipped);
         const totalParticipants = nonSkippedResults.length;
@@ -136,8 +176,6 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         const hasOnlyHomeRoot = tree.length === 1;
         const homeRoot = hasOnlyHomeRoot ? tree[0].name : "";
 
-        // Determine expected parent paths
-        const expectedAnswers = task.expectedAnswer.split(",").map(a => a.trim());
         const expectedParentPaths = expectedAnswers.map(answer => {
             const expectedParts = answer.split("/").filter(Boolean);
             if (hasOnlyHomeRoot && expectedParts.length > 1) {
@@ -288,6 +326,7 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
                 parentClicks: Array.from(parentClickStats.values()).sort((a, b) => b.firstClickCount - a.firstClickCount),
                 incorrectDestinations,
                 confidenceRatings,
+                pathDistribution,
             }
         };
     });

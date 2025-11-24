@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { getMetricColor } from "@/lib/utils";
 import type { UploadedData } from "@/lib/types";
 import { calculateOverviewStats } from "@/lib/stats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,12 +101,14 @@ export function OverviewTab({ data }: OverviewTabProps) {
         <div className="space-y-6">
             {/* Tree Structure Section */}
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader
+                    className="flex flex-row items-center justify-between cursor-pointer py-4"
+                    onClick={() => setIsTreeVisible(!isTreeVisible)}
+                >
                     <CardTitle className="text-lg font-medium">Tree Structure</CardTitle>
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setIsTreeVisible(!isTreeVisible)}
                         className="h-8 w-8 p-0"
                     >
                         {isTreeVisible ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -124,7 +127,7 @@ export function OverviewTab({ data }: OverviewTabProps) {
                         <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.completionRate}%</div>
+                        <div className={`text-2xl font-bold ${getMetricColor(stats.completionRate)}`}>{stats.completionRate}%</div>
                         <p className="text-xs text-muted-foreground">
                             {stats.completedParticipants} completed / {stats.totalParticipants} total
                         </p>
@@ -135,7 +138,7 @@ export function OverviewTab({ data }: OverviewTabProps) {
                         <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.successRate}%</div>
+                        <div className={`text-2xl font-bold ${getMetricColor(stats.successRate)}`}>{stats.successRate}%</div>
                         <p className="text-xs text-muted-foreground">Average across all tasks</p>
                     </CardContent>
                 </Card>
@@ -144,7 +147,7 @@ export function OverviewTab({ data }: OverviewTabProps) {
                         <CardTitle className="text-sm font-medium">Directness</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.directnessRate}%</div>
+                        <div className={`text-2xl font-bold ${getMetricColor(stats.directnessRate)}`}>{stats.directnessRate}%</div>
                         <p className="text-xs text-muted-foreground">Average across all tasks</p>
                     </CardContent>
                 </Card>
@@ -164,7 +167,7 @@ export function OverviewTab({ data }: OverviewTabProps) {
                         <CardTitle className="text-sm font-medium">Overall Score</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-purple-600">{stats.overallScore}</div>
+                        <div className={`text-2xl font-bold ${getMetricColor(stats.overallScore)}`}>{stats.overallScore}</div>
                         <p className="text-xs text-muted-foreground">Weighted average (70% success, 30% directness)</p>
                     </CardContent>
                 </Card>

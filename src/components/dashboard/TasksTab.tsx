@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { getMetricColor } from "@/lib/utils";
 import type { UploadedData, Participant } from "@/lib/types";
 import { calculateTaskStats } from "@/lib/stats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,7 +81,16 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                             <div className="flex items-end justify-between">
                                 {selectedTask.expectedAnswer && (
                                     <div className="text-sm text-gray-500 max-w-[80%]">
-                                        <span className="font-medium text-gray-700">Expected Path:</span> {selectedTask.expectedAnswer}
+                                        <span className="font-medium text-gray-700">Expected Path{selectedTask.expectedAnswer.includes(",") ? "s" : ""}:</span>
+                                        {selectedTask.expectedAnswer.includes(",") ? (
+                                            <ul className="list-disc list-inside pl-1 mt-1 space-y-1">
+                                                {selectedTask.expectedAnswer.split(",").map((path, i) => (
+                                                    <li key={i} className="text-gray-600 break-all">{path.trim()}</li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <span className="ml-2">{selectedTask.expectedAnswer}</span>
+                                        )}
                                     </div>
                                 )}
                                 <div className="flex items-center gap-2 text-gray-500">
@@ -144,7 +154,7 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                             {/* Stats Cards */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="rounded-lg border p-4 text-center">
-                                    <div className="text-2xl font-bold text-green-600">{selectedTask.stats.success.rate}%</div>
+                                    <div className={`text-2xl font-bold ${getMetricColor(selectedTask.stats.success.rate)}`}>{selectedTask.stats.success.rate}%</div>
                                     <div className="text-xs text-gray-500">Success Rate</div>
                                     <div className="text-[10px] text-gray-400">
                                         {selectedTask.stats.breakdown.directSuccess + selectedTask.stats.breakdown.indirectSuccess} / {totalParticipants} participants
@@ -152,7 +162,7 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                                     <div className="text-[10px] text-gray-400">±{selectedTask.stats.success.margin}%</div>
                                 </div>
                                 <div className="rounded-lg border p-4 text-center">
-                                    <div className="text-2xl font-bold text-blue-600">{selectedTask.stats.directness.rate}%</div>
+                                    <div className={`text-2xl font-bold ${getMetricColor(selectedTask.stats.directness.rate)}`}>{selectedTask.stats.directness.rate}%</div>
                                     <div className="text-xs text-gray-500">Directness</div>
                                     <div className="text-[10px] text-gray-400">
                                         {selectedTask.stats.breakdown.directSuccess + selectedTask.stats.breakdown.directFail} / {totalParticipants} participants
@@ -164,7 +174,7 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                                     <div className="text-xs text-gray-500">Median Time</div>
                                 </div>
                                 <div className="rounded-lg border p-4 text-center">
-                                    <div className="text-2xl font-bold text-purple-600">{selectedTask.stats.score}</div>
+                                    <div className={`text-2xl font-bold ${getMetricColor(selectedTask.stats.score)}`}>{selectedTask.stats.score}</div>
                                     <div className="text-xs text-gray-500">Overall Score</div>
                                 </div>
                             </div>
@@ -211,7 +221,7 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                                         <thead>
                                             <tr className="border-b text-left">
                                                 <th className="pb-2 font-medium text-gray-500">Path</th>
-                                                <th className="pb-2 font-medium text-gray-500">Correct First Click</th>
+                                                <th className="pb-2 font-medium text-gray-500 text-center">Correct First Click</th>
                                                 <th className="pb-2 font-medium text-gray-500 text-center">Clicked First</th>
                                                 <th className="pb-2 font-medium text-gray-500 text-center">Clicked During Task</th>
                                             </tr>
@@ -220,7 +230,7 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                                             {selectedTask.stats.parentClicks.map((click, i) => (
                                                 <tr key={i} className="border-b last:border-0">
                                                     <td className="py-2 font-mono text-xs">{click.path}</td>
-                                                    <td className="py-2">
+                                                    <td className="py-2 text-center">
                                                         <span className={click.isCorrect ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
                                                             {click.isCorrect ? "Yes" : "No"}
                                                         </span>
@@ -239,6 +249,37 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Correct Path Distribution */}
+                    {selectedTask.stats.pathDistribution && selectedTask.stats.pathDistribution.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg">Correct Path Distribution</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b text-left">
+                                                <th className="pb-2 font-medium text-gray-500">Path</th>
+                                                <th className="pb-2 font-medium text-gray-500 text-center">Count</th>
+                                                <th className="pb-2 font-medium text-gray-500 text-center">% of Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {selectedTask.stats.pathDistribution.map((dest, i) => (
+                                                <tr key={i} className="border-b last:border-0">
+                                                    <td className="py-2 font-mono text-xs">{dest.path}</td>
+                                                    <td className="py-2 text-center">{dest.count}</td>
+                                                    <td className="py-2 text-center">{dest.percentage}%</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Incorrect Destinations */}
                     <Card>

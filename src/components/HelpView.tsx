@@ -82,6 +82,30 @@ export function HelpView({ onBack }: HelpViewProps) {
                     </section>
 
                     <section className="rounded-lg border bg-white p-8 shadow-sm">
+                        <h2 className="mb-6 text-xl font-bold text-gray-900">Metric Benchmarks</h2>
+                        <p className="mb-4 text-gray-600">
+                            The following benchmarks are used to color-code <strong>Success Rate</strong>, <strong>Directness</strong>, and <strong>Overall Score</strong> to help you quickly identify performance levels:
+                        </p>
+                        <div className="grid gap-4 sm:grid-cols-3">
+                            <div className="rounded-lg border bg-white p-4 text-center">
+                                <div className="mb-2 text-2xl font-bold text-green-600">≥ 80%</div>
+                                <div className="font-medium text-gray-900">Excellent</div>
+                                <p className="text-xs text-gray-500">High performance</p>
+                            </div>
+                            <div className="rounded-lg border bg-white p-4 text-center">
+                                <div className="mb-2 text-2xl font-bold text-orange-500">60% - 79%</div>
+                                <div className="font-medium text-gray-900">Average</div>
+                                <p className="text-xs text-gray-500">Needs improvement</p>
+                            </div>
+                            <div className="rounded-lg border bg-white p-4 text-center">
+                                <div className="mb-2 text-2xl font-bold text-red-600">&lt; 60%</div>
+                                <div className="font-medium text-gray-900">Poor</div>
+                                <p className="text-xs text-gray-500">Critical issues</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="rounded-lg border bg-white p-8 shadow-sm">
                         <h2 className="mb-6 text-xl font-bold text-gray-900">Task Outcomes Breakdown</h2>
                         <div className="space-y-4">
                             <div className="grid gap-4 sm:grid-cols-2">

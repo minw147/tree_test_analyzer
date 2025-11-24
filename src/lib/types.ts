@@ -71,6 +71,11 @@ export interface TaskStats {
             count: number;
             percentage: number;
         }[];
+        pathDistribution?: {
+            path: string;
+            count: number;
+            percentage: number;
+        }[];
         confidenceRatings: {
             value: number;
             count: number;

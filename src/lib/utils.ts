@@ -11,3 +11,9 @@ export function sanitizeTreeTestLink(name: string): string {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "");
 }
+
+export function getMetricColor(value: number): string {
+    if (value >= 80) return "text-green-600";
+    if (value >= 60) return "text-orange-500";
+    return "text-red-600";
+}

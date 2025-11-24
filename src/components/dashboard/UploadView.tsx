@@ -18,7 +18,7 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
     const [error, setError] = useState<string | null>(null);
     const [treeText, setTreeText] = useState("");
     const [taskInstructions, setTaskInstructions] = useState<string[]>(["", "", ""]);
-    const [expectedPaths, setExpectedPaths] = useState<string[]>(["", "", ""]);
+    const [expectedPaths, setExpectedPaths] = useState<string[][]>([[""], [""], [""]]);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
     const parsedTree = useMemo<Item[]>(() => {
@@ -54,8 +54,8 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
             setError("Please ensure all tasks have instructions.");
             return;
         }
-        if (expectedPaths.some(p => !p.trim())) {
-            setError("Please ensure all tasks have an expected path selected.");
+        if (expectedPaths.some(paths => paths.some(p => !p.trim()))) {
+            setError("Please ensure all tasks have at least one expected path selected.");
             return;
         }
 
@@ -91,7 +91,8 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
                     task.description = taskInstructions[index].trim();
                 }
                 if (expectedPaths[index]) {
-                    task.expectedAnswer = expectedPaths[index].trim();
+                    // Join multiple paths with comma
+                    task.expectedAnswer = expectedPaths[index].filter(p => p.trim()).join(", ");
                 }
             });
 
@@ -128,13 +129,13 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
 
             // Set sample task instructions and expected answers
             const sampleTasks = [
-                { description: "Find Laptops", expectedAnswer: "/Home/Products/Electronics/Laptops" },
+                { description: "Find Laptops", expectedAnswer: "/Home/Products/Electronics/Laptops, /Home/Products/Electronics/Smartphones" },
                 { description: "Find Career Opportunities", expectedAnswer: "/Home/About Us/Careers" },
                 { description: "Contact Support", expectedAnswer: "/Home/Contact" }
             ];
 
             setTaskInstructions(sampleTasks.map(t => t.description));
-            setExpectedPaths(sampleTasks.map(t => t.expectedAnswer));
+            setExpectedPaths(sampleTasks.map(t => t.expectedAnswer.split(",").map(p => p.trim())));
 
             // Apply sample instructions and expected answers to data
             data.tasks.forEach((task, index) => {
@@ -144,7 +145,57 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
                 }
             });
 
-            setTreeText(treeContent); // Update UI to show loaded tree
+            // Modify some participants to use the alternative path for Task 1
+            if (data.participants.length > 6 && data.tasks.length > 0) {
+                const firstTaskIndex = data.tasks[0].index;
+                const altPath = "/Home/Products/Electronics/Smartphones";
+                const task1Expected = sampleTasks[0].expectedAnswer.split(",").map(p => p.trim());
+
+                // 1. Inject Alternative Path (Direct Success)
+                [2, 3].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === firstTaskIndex);
+                        if (r) {
+                            r.pathTaken = altPath;
+                            r.successful = true;
+                            r.directPathTaken = true;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // 2. Fix "Indirect Success" for seemingly direct paths
+                data.participants.forEach(p => {
+                    const r = p.taskResults.find(tr => tr.taskIndex === firstTaskIndex);
+                    if (r && r.successful) {
+                        if (task1Expected.includes(r.pathTaken)) {
+                            r.directPathTaken = true;
+                        }
+                    }
+                });
+
+                // 3. Simulate Indirect Success (Wandering)
+                const p5 = data.participants[5];
+                const r5 = p5?.taskResults.find(tr => tr.taskIndex === firstTaskIndex);
+                if (r5) {
+                    r5.pathTaken = "/Home/About Us/Home/Products/Electronics/Laptops";
+                    r5.successful = true;
+                    r5.directPathTaken = false;
+                    r5.skipped = false;
+                }
+
+                // 4. Simulate Backtracking (Wrong branch)
+                const p6 = data.participants[6];
+                const r6 = p6?.taskResults.find(tr => tr.taskIndex === firstTaskIndex);
+                if (r6) {
+                    r6.pathTaken = "/Home/Services/Support/Home/Products/Electronics/Laptops";
+                    r6.successful = true;
+                    r6.directPathTaken = false;
+                    r6.skipped = false;
+                }
+            }
+
+            setTreeText(treeContent);
             onDataLoaded(data);
         } catch (err) {
             console.error(err);
@@ -283,7 +334,7 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
                                                 const lines = e.target.value.split('\n').filter(l => l.trim());
                                                 if (lines.length > 0) {
                                                     setTaskInstructions(lines);
-                                                    setExpectedPaths(new Array(lines.length).fill(""));
+                                                    setExpectedPaths(Array.from({ length: lines.length }, () => [""]));
                                                 }
                                             }}
                                         />
@@ -323,23 +374,62 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
                                         </Button>
                                     </div>
 
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-gray-700">
-                                            Expected Path {expectedPaths[index] && <span className="text-blue-600">({expectedPaths[index]})</span>}
-                                        </label>
-                                        {parsedTree.length > 0 ? (
-                                            <TreePathSelector
-                                                tree={parsedTree}
-                                                selectedPath={expectedPaths[index] || ""}
-                                                onPathSelect={(path) => {
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-medium text-gray-700">
+                                                Expected Paths <span className="text-blue-600">({expectedPaths[index]?.length || 0})</span>
+                                            </label>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 text-xs text-blue-600 hover:text-blue-800"
+                                                onClick={() => {
                                                     const newPaths = [...expectedPaths];
-                                                    newPaths[index] = path;
+                                                    newPaths[index] = [...(newPaths[index] || []), ""];
                                                     setExpectedPaths(newPaths);
                                                 }}
-                                            />
+                                            >
+                                                <Plus className="mr-1 h-3 w-3" />
+                                                Add Path
+                                            </Button>
+                                        </div>
+
+                                        {parsedTree.length > 0 ? (
+                                            <div className="space-y-2 pl-2 border-l-2 border-gray-100">
+                                                {expectedPaths[index]?.map((path, pathIndex) => (
+                                                    <div key={pathIndex} className="flex items-center gap-2">
+                                                        <div className="flex-1">
+                                                            <TreePathSelector
+                                                                tree={parsedTree}
+                                                                selectedPath={path || ""}
+                                                                onPathSelect={(newPath) => {
+                                                                    const newPaths = [...expectedPaths];
+                                                                    const taskPaths = [...(newPaths[index] || [])];
+                                                                    taskPaths[pathIndex] = newPath;
+                                                                    newPaths[index] = taskPaths;
+                                                                    setExpectedPaths(newPaths);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-gray-400 hover:text-red-500"
+                                                            disabled={expectedPaths[index].length <= 1}
+                                                            onClick={() => {
+                                                                const newPaths = [...expectedPaths];
+                                                                newPaths[index] = newPaths[index].filter((_, i) => i !== pathIndex);
+                                                                setExpectedPaths(newPaths);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         ) : (
                                             <p className="text-xs text-gray-500 italic py-2">
-                                                Upload tree structure above to select expected path
+                                                Upload tree structure above to select expected paths
                                             </p>
                                         )}
                                     </div>
@@ -351,7 +441,7 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
                                 className="w-full border-dashed"
                                 onClick={() => {
                                     setTaskInstructions([...taskInstructions, ""]);
-                                    setExpectedPaths([...expectedPaths, ""]);
+                                    setExpectedPaths([...expectedPaths, [""]]);
                                 }}
                             >
                                 <Plus className="mr-2 h-4 w-4" />
