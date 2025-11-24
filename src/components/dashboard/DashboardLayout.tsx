@@ -2,11 +2,12 @@ import { useState } from "react";
 import type { UploadedData } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { BarChart3, PieChart as PieChartIcon, Network, Activity, LogOut, HelpCircle, Users } from "lucide-react";
+import { BarChart3, PieChart as PieChartIcon, Network, Activity, LogOut, HelpCircle, Users, FileText } from "lucide-react";
 import { OverviewTab } from "./OverviewTab";
 import { TasksTab } from "./TasksTab";
 import { ParticipantsTab } from "./ParticipantsTab";
 import { PietreeTab } from "./PietreeTab";
+import { ExportTab } from "./ExportTab";
 import { HelpView } from "../HelpView";
 
 interface DashboardLayoutProps {
@@ -47,7 +48,7 @@ export function DashboardLayout({ data, onReset }: DashboardLayoutProps) {
 
             <main className="container mx-auto p-4 py-8">
                 <Tabs className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-3 lg:w-[600px] lg:grid-cols-4">
+                    <TabsList className="grid w-full grid-cols-3 lg:w-[750px] lg:grid-cols-5">
                         <TabsTrigger value="overview" isActive={activeTab === "overview"} onClick={() => setActiveTab("overview")}>
                             <BarChart3 className="mr-2 h-4 w-4" />
                             Overview
@@ -63,6 +64,10 @@ export function DashboardLayout({ data, onReset }: DashboardLayoutProps) {
                         <TabsTrigger value="pietree" isActive={activeTab === "pietree"} onClick={() => setActiveTab("pietree")}>
                             <Network className="mr-2 h-4 w-4" />
                             Pietree
+                        </TabsTrigger>
+                        <TabsTrigger value="export" isActive={activeTab === "export"} onClick={() => setActiveTab("export")}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Export
                         </TabsTrigger>
                     </TabsList>
 
@@ -80,6 +85,10 @@ export function DashboardLayout({ data, onReset }: DashboardLayoutProps) {
 
                     <TabsContent value="pietree" activeValue={activeTab}>
                         <PietreeTab data={data} />
+                    </TabsContent>
+
+                    <TabsContent value="export" activeValue={activeTab}>
+                        <ExportTab data={data} />
                     </TabsContent>
                 </Tabs>
             </main>
