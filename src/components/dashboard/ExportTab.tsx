@@ -49,37 +49,40 @@ export function ExportTab({ data }: ExportTabProps) {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col gap-3 sm:gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Export & Report</h2>
-                    <p className="text-gray-500">Generate reports for AI analysis or archival.</p>
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Export & Report</h2>
+                    <p className="text-sm sm:text-base text-gray-500">Generate reports for AI analysis or archival.</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                    <Button onClick={handleCopy} className="gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Button onClick={handleCopy} size="sm" className="gap-2 w-full sm:w-auto">
                         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        {copied ? "Copied!" : "Copy to Clipboard"}
+                        <span className="hidden sm:inline">{copied ? "Copied!" : "Copy to Clipboard"}</span>
+                        <span className="sm:hidden">{copied ? "Copied!" : "Copy"}</span>
                     </Button>
-                    <Button variant="outline" onClick={handleDownloadMd} className="gap-2">
+                    <Button variant="outline" onClick={handleDownloadMd} size="sm" className="gap-2 w-full sm:w-auto">
                         <Download className="h-4 w-4" />
-                        Download .md
+                        <span className="hidden sm:inline">Download .md</span>
+                        <span className="sm:hidden">Download</span>
                     </Button>
-                    <Button variant="outline" onClick={handleExportExcel} className="gap-2">
+                    <Button variant="outline" onClick={handleExportExcel} size="sm" className="gap-2 w-full sm:w-auto">
                         <FileSpreadsheet className="h-4 w-4" />
-                        Export Raw Data
+                        <span className="hidden sm:inline">Export Raw Data</span>
+                        <span className="sm:hidden">Export Data</span>
                     </Button>
                 </div>
             </div>
 
-            <Card className="h-[calc(100vh-12rem)] flex flex-col">
-                <CardHeader className="py-3 px-6 border-b bg-gray-50/50">
-                    <CardTitle className="text-sm font-medium text-gray-500">
+            <Card className="h-[calc(100vh-16rem)] sm:h-[calc(100vh-12rem)] flex flex-col">
+                <CardHeader className="py-2 sm:py-3 px-4 sm:px-6 border-b bg-gray-50/50">
+                    <CardTitle className="text-xs sm:text-sm font-medium text-gray-500">
                         Report Preview
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-hidden">
-                    <div className="h-full w-full overflow-auto p-6 bg-white">
-                        <pre className="font-mono text-sm whitespace-pre-wrap text-gray-800">
+                    <div className="h-full w-full overflow-auto p-3 sm:p-6 bg-white">
+                        <pre className="font-mono text-xs sm:text-sm whitespace-pre-wrap text-gray-800">
                             {markdownContent || "Generating report..."}
                         </pre>
                     </div>

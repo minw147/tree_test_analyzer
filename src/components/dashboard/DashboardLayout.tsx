@@ -48,26 +48,26 @@ export function DashboardLayout({ data, onReset }: DashboardLayoutProps) {
 
             <main className="container mx-auto p-4 py-8">
                 <Tabs className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-3 lg:w-[750px] lg:grid-cols-5">
-                        <TabsTrigger value="overview" isActive={activeTab === "overview"} onClick={() => setActiveTab("overview")}>
-                            <BarChart3 className="mr-2 h-4 w-4" />
-                            Overview
+                    <TabsList className="flex w-full overflow-x-auto lg:justify-start">
+                        <TabsTrigger value="overview" isActive={activeTab === "overview"} onClick={() => setActiveTab("overview")} className="flex-shrink-0">
+                            <BarChart3 className="mr-1 sm:mr-2 h-4 w-4" />
+                            <span className="hidden sm:inline">Overview</span>
                         </TabsTrigger>
-                        <TabsTrigger value="tasks" isActive={activeTab === "tasks"} onClick={() => setActiveTab("tasks")}>
-                            <PieChartIcon className="mr-2 h-4 w-4" />
-                            Tasks
+                        <TabsTrigger value="tasks" isActive={activeTab === "tasks"} onClick={() => setActiveTab("tasks")} className="flex-shrink-0">
+                            <PieChartIcon className="mr-1 sm:mr-2 h-4 w-4" />
+                            <span className="hidden sm:inline">Tasks</span>
                         </TabsTrigger>
-                        <TabsTrigger value="participants" isActive={activeTab === "participants"} onClick={() => setActiveTab("participants")}>
-                            <Users className="mr-2 h-4 w-4" />
-                            Participants
+                        <TabsTrigger value="participants" isActive={activeTab === "participants"} onClick={() => setActiveTab("participants")} className="flex-shrink-0">
+                            <Users className="mr-1 sm:mr-2 h-4 w-4" />
+                            <span className="hidden sm:inline">Participants</span>
                         </TabsTrigger>
-                        <TabsTrigger value="pietree" isActive={activeTab === "pietree"} onClick={() => setActiveTab("pietree")}>
-                            <Network className="mr-2 h-4 w-4" />
-                            Pietree
+                        <TabsTrigger value="pietree" isActive={activeTab === "pietree"} onClick={() => setActiveTab("pietree")} className="flex-shrink-0">
+                            <Network className="mr-1 sm:mr-2 h-4 w-4" />
+                            <span className="hidden sm:inline">Pietree</span>
                         </TabsTrigger>
-                        <TabsTrigger value="export" isActive={activeTab === "export"} onClick={() => setActiveTab("export")}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            Export
+                        <TabsTrigger value="export" isActive={activeTab === "export"} onClick={() => setActiveTab("export")} className="flex-shrink-0">
+                            <FileText className="mr-1 sm:mr-2 h-4 w-4" />
+                            <span className="hidden sm:inline">Export</span>
                         </TabsTrigger>
                     </TabsList>
 
