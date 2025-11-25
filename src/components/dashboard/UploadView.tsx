@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Upload, FileText, AlertCircle, Plus, Trash2, ListPlus } from "lucide-react";
 import { parseResponseData, parseTreeFromString } from "@/lib/data-parser";
 import type { UploadedData, Item } from "@/lib/types";
@@ -13,13 +13,54 @@ interface UploadViewProps {
     onDataLoaded: (data: UploadedData) => void;
 }
 
+const STORAGE_KEY_FORM_DATA = "tree-test-analyzer-form-data";
+
+interface FormData {
+    treeText: string;
+    taskInstructions: string[];
+    expectedPaths: string[][];
+}
+
+const loadFormDataFromStorage = (): FormData | null => {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY_FORM_DATA);
+        if (saved) {
+            return JSON.parse(saved);
+        }
+    } catch (error) {
+        console.error("Failed to load form data from localStorage:", error);
+    }
+    return null;
+};
+
+const saveFormDataToStorage = (formData: FormData) => {
+    try {
+        localStorage.setItem(STORAGE_KEY_FORM_DATA, JSON.stringify(formData));
+    } catch (error) {
+        console.error("Failed to save form data to localStorage:", error);
+    }
+};
+
 export function UploadView({ onDataLoaded }: UploadViewProps) {
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [treeText, setTreeText] = useState("");
-    const [taskInstructions, setTaskInstructions] = useState<string[]>(["", "", ""]);
-    const [expectedPaths, setExpectedPaths] = useState<string[][]>([[""], [""], [""]]);
+    
+    // Load initial state from localStorage
+    const savedFormData = loadFormDataFromStorage();
+    const [treeText, setTreeText] = useState(savedFormData?.treeText || "");
+    const [taskInstructions, setTaskInstructions] = useState(savedFormData?.taskInstructions || ["", "", ""]);
+    const [expectedPaths, setExpectedPaths] = useState(savedFormData?.expectedPaths || [[""], [""], [""]]);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+    // Save form data to localStorage whenever it changes
+    useEffect(() => {
+        const formData: FormData = {
+            treeText,
+            taskInstructions,
+            expectedPaths
+        };
+        saveFormDataToStorage(formData);
+    }, [treeText, taskInstructions, expectedPaths]);
 
     const parsedTree = useMemo<Item[]>(() => {
         if (!treeText.trim()) return [];
