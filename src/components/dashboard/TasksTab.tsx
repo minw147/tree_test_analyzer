@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { getMetricColor } from "@/lib/utils";
 import type { UploadedData, Participant } from "@/lib/types";
 import { calculateTaskStats } from "@/lib/stats";
@@ -9,10 +10,9 @@ import { HelpCircle, Users, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TasksTabProps {
     data: UploadedData;
-    onOpenHelp?: () => void;
 }
 
-export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
+export function TasksTab({ data }: TasksTabProps) {
     // We need the tree structure for full stats, but if it's missing we pass an empty array
     // The stats calculator handles missing tree gracefully for most parts, 
     // but parent click analysis might be limited.
@@ -115,15 +115,12 @@ export function TasksTab({ data, onOpenHelp }: TasksTabProps) {
                                         <li><strong>Directness:</strong> % who went straight to the answer.</li>
                                         <li><strong>Overall Score:</strong> Weighted score (70% Success + 30% Directness).</li>
                                     </ul>
-                                    <button
-                                        onClick={() => {
-                                            setShowHelpTooltip(false);
-                                            onOpenHelp?.();
-                                        }}
+                                    <Link
+                                        to="/help"
                                         className="text-xs font-medium text-blue-600 hover:underline"
                                     >
                                         Read full guide →
-                                    </button>
+                                    </Link>
                                 </div>
                             )}
                         </div>

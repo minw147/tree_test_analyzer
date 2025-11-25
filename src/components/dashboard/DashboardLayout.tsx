@@ -2,13 +2,12 @@ import { useState } from "react";
 import type { UploadedData } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { BarChart3, PieChart as PieChartIcon, Network, Activity, LogOut, HelpCircle, Users, FileText } from "lucide-react";
+import { BarChart3, PieChart as PieChartIcon, Network, LogOut, Users, FileText, HelpCircle } from "lucide-react";
 import { OverviewTab } from "./OverviewTab";
 import { TasksTab } from "./TasksTab";
 import { ParticipantsTab } from "./ParticipantsTab";
 import { PietreeTab } from "./PietreeTab";
 import { ExportTab } from "./ExportTab";
-import { HelpView } from "../HelpView";
 
 interface DashboardLayoutProps {
     data: UploadedData;
@@ -17,34 +16,45 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ data, onReset }: DashboardLayoutProps) {
     const [activeTab, setActiveTab] = useState("overview");
-    const [showHelp, setShowHelp] = useState(false);
-
-    if (showHelp) {
-        return <HelpView onBack={() => setShowHelp(false)} />;
-    }
+    const [showStorageTooltip, setShowStorageTooltip] = useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <header className="sticky top-0 z-10 border-b bg-white shadow-sm">
+        <div className="h-full">
+            <div className="border-b bg-white shadow-sm">
                 <div className="container mx-auto flex h-16 items-center justify-between px-4">
                     <div className="flex items-center gap-2">
-                        <Activity className="h-6 w-6 text-blue-600" />
-                        <h1 className="text-xl font-bold text-gray-900">Tree Test Analyzer</h1>
+                        {/* Page specific title or empty */}
+                        <h2 className="text-lg font-medium text-gray-700">Analysis Dashboard</h2>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowStorageTooltip(!showStorageTooltip)}
+                                className="flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                <HelpCircle className="h-4 w-4 text-gray-500" />
+                                <span className="hidden sm:inline">Storage info</span>
+                            </button>
+                            {showStorageTooltip && (
+                                <div className="absolute left-full top-0 ml-2 z-50 w-72 rounded-lg border bg-white p-4 shadow-lg ring-1 ring-black ring-opacity-5">
+                                    <h4 className="mb-2 font-semibold text-gray-900">Local Storage Notice</h4>
+                                    <ul className="mb-4 space-y-2 text-xs text-gray-600">
+                                        <li>Your analysis data is saved locally in this browser. It will be lost if you clear browser data or use a different device.</li>
+                                        <li><strong>Tip:</strong> Export your data to preserve it permanently.</li>
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className="flex items-center gap-4">
                         <span className="text-sm text-gray-500">
                             {data.participants.length} participants • {data.tasks.length} tasks
                         </span>
-                        <Button variant="ghost" size="icon" onClick={() => setShowHelp(true)} title="Help & Definitions">
-                            <HelpCircle className="h-5 w-5 text-gray-500" />
-                        </Button>
                         <Button variant="outline" size="sm" onClick={onReset}>
                             <LogOut className="mr-2 h-4 w-4" />
                             Reset
                         </Button>
                     </div>
                 </div>
-            </header>
+            </div>
 
             <main className="container mx-auto p-4 py-8">
                 <Tabs className="space-y-6">
@@ -76,7 +86,7 @@ export function DashboardLayout({ data, onReset }: DashboardLayoutProps) {
                     </TabsContent>
 
                     <TabsContent value="tasks" activeValue={activeTab}>
-                        <TasksTab data={data} onOpenHelp={() => setShowHelp(true)} />
+                        <TasksTab data={data} />
                     </TabsContent>
 
                     <TabsContent value="participants" activeValue={activeTab}>
