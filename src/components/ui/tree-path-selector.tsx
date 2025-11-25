@@ -87,7 +87,7 @@ export function TreePathSelector({ tree, selectedPath, onPathSelect }: TreePathS
 
     const renderNode = (node: Item, parentPath: string = "", level: number = 0): React.ReactElement => {
         const currentPath = buildPath(parentPath, node.name);
-        const hasChildren = node.children && node.children.length > 0;
+        const hasChildren = !!(node.children && node.children.length > 0);
         const isExpanded = expandedNodes.has(currentPath);
         const isSelected = currentPath === selectedPath;
         const isLastClicked = currentPath === lastClickedPath;
