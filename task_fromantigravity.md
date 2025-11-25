@@ -33,8 +33,9 @@
 
 * \[x] Study configuration state management
 
-  * \[x] Local storage persistence for study data
-  * \[x] Auto-save on changes
+  * \[x] Local storage persistence for study data (fallback)
+  * \[x] Auto-save on changes (local storage for now, will add backend auto-save in Phase 2)
+  * \[ ] Auto-save to backend API for hosted backend users (Phase 2)
   * \[x] Editable study name and creator name
   * \[x] Single study limitation (one study at a time in Creator mode)
   * \[x] Local storage warning tooltip
@@ -61,16 +62,19 @@
   * \[ ] API endpoints:
     * \[ ] POST /api/auth/register - User registration
     * \[ ] POST /api/auth/login - User login
-    * \[ ] POST /api/studies - Create study
-    * \[ ] GET /api/studies/:id - Get study config
-    * \[ ] PUT /api/studies/:id - Update study
-    * \[ ] DELETE /api/studies/:id - Delete study
+  * \[ ] GET /api/studies - List all studies for current user (with filters)
+  * \[ ] POST /api/studies - Create study (as draft)
+  * \[ ] GET /api/studies/:id - Get study config
+  * \[ ] PUT /api/studies/:id - Update study (supports draft updates)
+  * \[ ] DELETE /api/studies/:id - Delete study
     * \[ ] POST /api/studies/:id/results - Submit participant results
     * \[ ] GET /api/studies/:id/status - Check study status
     * \[ ] PUT /api/studies/:id/status - Update study status
   * \[ ] Database schema:
     * \[ ] Users table (id, email, password_hash, created_at)
-    * \[ ] Studies table (id, user_id, name, config_json, status, created_at)
+    * \[ ] Studies table (id, user_id, name, config_json, status, draft, created_at, updated_at)
+      * \[ ] status: 'active' | 'closed'
+      * \[ ] draft: boolean (true for draft studies)
     * \[ ] Results table (id, study_id, participant_id, results_json, submitted_at)
   * \[ ] Security:
     * \[ ] Password hashing (bcrypt)
@@ -145,13 +149,13 @@
     * \[ ] "Free - Bring Your Own Backend" explanation
     * \[ ] Data privacy and security recommendations
 
-* \[ ] Study status management in Analyzer
-  * \[ ] Display study status (Active/Closed) in study list/library
+* \[ ] Study status management in Study Library
+  * \[ ] Display study status (Active/Closed/Draft) in study list/library
   * \[ ] Toggle study status (open/close) functionality
   * \[ ] Status updates via hosted backend API
   * \[ ] Status updates via custom API (if custom API storage selected)
 
-* \[x] Local storage persistence for analyzer data
+* \[x] Local storage persistence for analyzer data (legacy - for BYOS users)
   * \[x] Auto-save loaded dataset
   * \[x] Persist upload form inputs (tree text, task instructions, expected paths)
 
@@ -166,16 +170,22 @@
   * \[ ] Include metadata (name, creator, timestamps, study ID)
   * \[ ] Use cryptographically secure study IDs (UUIDs, not sequential)
 
-* \[ ] Build study export functionality (Creator page)
+* \[ ] Build study save/export functionality (Creator page)
+  * \[ ] Auto-save draft studies (on changes or manual save):
+    * \[ ] Hosted backend: Auto-save to backend API (POST /api/studies or PUT /api/studies/:id)
+    * \[ ] Custom API: Save to custom API endpoint
+    * \[ ] Local Download: Save to localStorage only
+  * \[ ] Mark study as "draft" or "published" status
   * \[ ] Generate complete study configuration JSON
-  * \[ ] Download JSON file option (for analyzer import)
-  * \[ ] Export includes all data needed for analyzer import
-  * \[ ] Store study config to storage (on export/share):
-    * \[ ] Via hosted backend API (default, if hosted backend selected)
-    * \[ ] Via custom API if custom API storage selected
-    * \[ ] Skip storage if local-download selected
+  * \[ ] Download JSON file option (for external import/backup)
+  * \[ ] Export includes all data needed for Study Library import
+  * \[ ] Store study config to storage:
+    * \[ ] Hosted backend: Automatically on save (drafts and published studies)
+    * \[ ] Custom API: On save/export to custom API endpoint
+    * \[ ] Local Download: localStorage only
   * \[ ] Generate shareable participant link with study ID only
   * \[ ] Link format: `/test/:studyId` (e.g., `/test/study-abc123`)
+  * \[ ] Only published studies can be shared via participant link
 
 * \[ ] Build participant link sharing UI (Creator Export tab)
   * \[ ] Display generated shareable link
@@ -185,20 +195,37 @@
   * \[ ] Web Share API integration (optional, for native sharing)
   * \[ ] Link validation and error handling
 
-* \[ ] Build study library/loader (Analyzer page)
-  * \[ ] Study library view (multiple studies supported)
-  * \[ ] Load study from exported JSON file
-  * \[ ] Display study list/library with metadata
-  * \[ ] Switch between loaded studies
-  * \[ ] Local storage persistence for study library
-  * \[ ] Delete studies from library
-
-* \[ ] Dual-file upload workflow (Analyzer)
-  * \[ ] Upload study configuration JSON (from Creator export)
-  * \[ ] Upload dataset/results file (CSV/Excel)
-  * \[ ] Validate both files are provided
-  * \[ ] Match dataset to study configuration
-  * \[ ] One-click import: upload both files together
+* \[ ] Build Study Library (rename from Analyzer page)
+  * \[ ] Unified interface for both storage types (hosted backend and BYOS)
+  * \[ ] Study Library view:
+    * \[ ] Study grid/list with metadata (name, creator, status, dates, participant count)
+    * \[ ] Filter by status (Draft / Active / Closed)
+    * \[ ] Search studies by name
+    * \[ ] Sort by date, name, status
+  * \[ ] For Hosted Backend users:
+    * \[ ] Fetch all studies from backend API (GET /api/studies)
+    * \[ ] Display all studies (drafts, active, closed)
+    * \[ ] Auto-sync with backend on load
+    * \[ ] Click to open study for viewing/editing
+    * \[ ] Delete study (with confirmation)
+    * \[ ] Studies automatically appear after creation/save
+  * \[ ] For BYOS (Custom API / Local Download) users:
+    * \[ ] Manual import workflow (same interface, different data source)
+    * \[ ] Load study from exported JSON file
+    * \[ ] Load dataset/results file (CSV/Excel) - dual-file upload
+    * \[ ] Match dataset to study configuration
+    * \[ ] Local storage persistence for imported studies
+    * \[ ] Delete studies from local library
+  * \[ ] Study actions:
+    * \[ ] View study details and results
+    * \[ ] Edit study (opens Creator with study loaded)
+    * \[ ] Duplicate/clone study
+    * \[ ] Export study (JSON download)
+    * \[ ] Delete study
+    * \[ ] Toggle study status (Active/Closed) - for hosted backend only
+  * \[ ] Study Library routing:
+    * \[ ] Update route from `/analyze` to `/library`
+    * \[ ] Update navigation and links throughout app
 
 ## Phase 4: Participant Experience
 
