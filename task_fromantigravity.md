@@ -45,11 +45,12 @@
 **Architecture:** Hosted backend (primary, paid) + Custom API (optional, free/BYOS)
 
 * \[ ] Define storage adapter interface
-  * \[ ] submit(result: ParticipantResult)
+  * \[ ] submit(result: ParticipantResult) - Must accept data in analyzer-compatible format (see Phase 5)
   * \[ ] checkStatus(studyId: string)
   * \[ ] updateStatus(studyId: string, status: 'active' | 'closed')
   * \[ ] fetchConfig(studyId: string)
   * \[ ] testConnection()
+  * \[ ] Note: All adapters must ensure submitted data matches analyzer format requirements (Participant ID, Status, timestamps, task paths, outcomes, confidence, times)
 
 * \[ ] Build hosted backend service (primary storage - paid feature)
   * \[ ] Backend API architecture:
@@ -172,6 +173,22 @@
 
 ## Phase 3: Study Sharing \& Loading
 
+* \[ ] Study status management in Study Library
+  * \[ ] Display study status (Active/Closed/Draft) in study list/library
+  * \[ ] Toggle study status (open/close) functionality
+  * \[ ] Status updates via hosted backend API
+  * \[ ] Status updates via custom API (if custom API storage selected)
+
+* \[x] Local storage persistence for analyzer data (legacy - for BYOS users)
+  * \[x] Auto-save loaded dataset
+  * \[x] Persist upload form inputs (tree text, task instructions, expected paths)
+
+* \[ ] Implement Local Download adapter (for testing/development)
+  * \[ ] Save to localStorage during test
+  * \[ ] Export results as CSV/JSON
+
+## Phase 3: Study Sharing \& Loading
+
 * \[ ] Create study configuration JSON schema
   * \[ ] Include all study config data (tree, tasks, settings, storage config)
   * \[ ] Include metadata (name, creator, timestamps, study ID)
@@ -272,15 +289,53 @@
   * \[ ] Click/path tracking
   * \[ ] Time tracking (active time only)
   * \[ ] Task completion detection
+  * \[ ] Track all required data points in analyzer-compatible format (see Phase 5 for format specification)
 
 ## Phase 5: Data Submission
 
+* \[ ] Required Data Format for Analyzer Compatibility
+  * \[ ] Data format MUST align with analyzer's data-parser.ts requirements
+  * \[ ] Participant Metadata (required columns):
+    * \[ ] Participant ID - Unique identifier (e.g., "P001", "P002")
+    * \[ ] Status - Either "Completed" or "Abandoned"
+    * \[ ] Start Time (UTC) - ISO timestamp when test started
+    * \[ ] End Time (UTC) - ISO timestamp when test ended (or null if abandoned)
+    * \[ ] Time Taken - Total duration in HH:MM:SS format (e.g., "00:05:23")
+  * \[ ] For Each Task (Task 1, Task 2, Task 3, etc.):
+    * \[ ] Task X Path Taken - The full path the participant selected (e.g., "Home/Products/Electronics/Laptops")
+    * \[ ] Task X Path Outcome - One of:
+      * \[ ] "Direct Success" - Found correct answer directly
+      * \[ ] "Indirect Success" - Found correct answer but wandered
+      * \[ ] "Failure" - Ended at wrong location
+      * \[ ] "Skip" - Skipped the task
+    * \[ ] Task X: How confident are you with your answer? - Confidence rating (1-5 scale, as number)
+    * \[ ] Task X Time - Time spent on this specific task in seconds (as number)
+  * \[ ] Implementation requirements:
+    * \[ ] Track all required data points during participant test (Phase 4)
+    * \[ ] Export to CSV/Excel in the exact format above
+    * \[ ] Store data according to the study's storage configuration:
+      * \[ ] Local download: Generate CSV/Excel file with all required columns
+      * \[ ] Hosted backend: POST data in this structure (JSON format, backend converts to CSV/Excel)
+      * \[ ] Custom API: POST data in this structure (JSON format, custom backend handles conversion)
+
 * \[ ] Create data submission service
+  * \[ ] Format participant data according to analyzer-compatible format
+  * \[ ] Generate CSV/Excel export with all required columns
+  * \[ ] Convert internal data structure to required format:
+    * \[ ] Participant metadata (ID, Status, timestamps, duration)
+    * \[ ] Task results (path taken, outcome, confidence, time) for each task
+    * \[ ] Ensure column names match exactly: "Participant ID", "Status", "Start Time (UTC)", "End Time (UTC)", "Time Taken", "Task X Path Taken", "Task X Path Outcome", "Task X: How confident are you with your answer?", "Task X Time"
 * \[ ] Implement adapter dispatch logic
   * \[ ] Route to appropriate adapter based on storage config:
     * \[ ] Hosted Backend adapter (default, if hosted backend selected)
+      * \[ ] Submit data in JSON format matching required structure
+      * \[ ] Backend converts to CSV/Excel for storage/export
     * \[ ] Custom API adapter (if custom API storage selected - free/BYOS)
+      * \[ ] Submit data in JSON format matching required structure
+      * \[ ] Custom backend must handle conversion to CSV/Excel if needed
     * \[ ] Local download adapter (if local-download selected)
+      * \[ ] Generate CSV/Excel file with all required columns
+      * \[ ] Trigger browser download
   * \[ ] Handle status check before submission
 * \[ ] Add retry logic for failed submissions
 * \[ ] Show completion message
