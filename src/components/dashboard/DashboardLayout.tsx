@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { UploadedData } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { BarChart3, PieChart as PieChartIcon, Network, LogOut, Users, FileText, HelpCircle } from "lucide-react";
+import { BarChart3, PieChart as PieChartIcon, Network, Users, FileText, Edit2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { OverviewTab } from "./OverviewTab";
 import { TasksTab } from "./TasksTab";
 import { ParticipantsTab } from "./ParticipantsTab";
@@ -11,52 +11,86 @@ import { ExportTab } from "./ExportTab";
 
 interface DashboardLayoutProps {
     data: UploadedData;
-    onReset: () => void;
+    onDataChange: (data: UploadedData) => void;
+    onDelete?: () => void;
 }
 
-export function DashboardLayout({ data, onReset }: DashboardLayoutProps) {
+export function DashboardLayout({ data, onDataChange, onDelete }: DashboardLayoutProps) {
     const [activeTab, setActiveTab] = useState("overview");
-    const [showStorageTooltip, setShowStorageTooltip] = useState(false);
+    const [editingName, setEditingName] = useState(false);
+    const [editingCreator, setEditingCreator] = useState(false);
 
     return (
         <div className="h-full">
             <div className="border-b bg-white shadow-sm">
-                <div className="container mx-auto flex h-16 items-center justify-between px-4">
-                    <div className="flex items-center gap-2">
-                        {/* Page specific title or empty */}
-                        <h2 className="text-lg font-medium text-gray-700">Analysis Dashboard</h2>
-                        <div className="relative">
-                            <button
-                                onClick={() => setShowStorageTooltip(!showStorageTooltip)}
-                                className="flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                            >
-                                <HelpCircle className="h-4 w-4 text-gray-500" />
-                                <span className="hidden sm:inline">Storage info</span>
-                            </button>
-                            {showStorageTooltip && (
-                                <div className="absolute left-full top-0 ml-2 z-50 w-72 rounded-lg border bg-white p-4 shadow-lg ring-1 ring-black ring-opacity-5">
-                                    <h4 className="mb-2 font-semibold text-gray-900">Local Storage Notice</h4>
-                                    <ul className="mb-4 space-y-2 text-xs text-gray-600">
-                                        <li>Your analysis data is saved locally in this browser. It will be lost if you clear browser data or use a different device.</li>
-                                        <li><strong>Tip:</strong> Export your data to preserve it permanently.</li>
-                                    </ul>
-                                </div>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+                    <div className="flex flex-col gap-2">
+                        {/* Editable Name */}
+                        <div className="flex items-center gap-2">
+                            {editingName ? (
+                                <Input
+                                    value={data.name || ""}
+                                    onChange={(e) => onDataChange({ ...data, name: e.target.value })}
+                                    onBlur={() => setEditingName(false)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === "Escape") {
+                                            setEditingName(false);
+                                        }
+                                    }}
+                                    className="text-lg font-semibold h-8 px-2 py-1 max-w-md"
+                                    placeholder="Untitled Analysis"
+                                    autoFocus
+                                />
+                            ) : (
+                                <h2
+                                    className="text-lg font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors flex items-center gap-2 group"
+                                    onClick={() => setEditingName(true)}
+                                    title="Click to edit study name"
+                                >
+                                    {data.name || "Untitled Analysis"}
+                                    <Edit2 className="h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                </h2>
                             )}
                         </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <span className="text-sm text-gray-500">
-                            {data.participants.length} participants • {data.tasks.length} tasks
-                        </span>
-                        <Button variant="outline" size="sm" onClick={onReset}>
-                            <LogOut className="mr-2 h-4 w-4" />
-                            Reset
-                        </Button>
+
+                        {/* Editable Creator and Stats */}
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                {editingCreator ? (
+                                    <Input
+                                        value={data.creator || ""}
+                                        onChange={(e) => onDataChange({ ...data, creator: e.target.value })}
+                                        onBlur={() => setEditingCreator(false)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === "Escape") {
+                                                setEditingCreator(false);
+                                            }
+                                        }}
+                                        placeholder="Enter creator name..."
+                                        className="text-sm text-gray-500 h-7 px-2 py-1 max-w-xs"
+                                        autoFocus
+                                    />
+                                ) : (
+                                    <p
+                                        className="text-sm text-gray-500 cursor-pointer hover:text-blue-600 transition-colors flex items-center gap-2 group w-fit"
+                                        onClick={() => setEditingCreator(true)}
+                                        title="Click to edit creator name"
+                                    >
+                                        {data.creator || "Study Creator"}
+                                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                    </p>
+                                )}
+                                <span className="text-sm text-gray-400">•</span>
+                                <span className="text-sm text-gray-500">
+                                    {data.participants.length} participants • {data.tasks.length} tasks
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <main className="container mx-auto p-4 py-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <Tabs className="space-y-6">
                     <TabsList className="flex w-full overflow-x-auto lg:justify-start">
                         <TabsTrigger value="overview" isActive={activeTab === "overview"} onClick={() => setActiveTab("overview")} className="flex-shrink-0">

@@ -121,6 +121,9 @@ export interface TaskResult {
 
 // Data structure for the uploaded Excel file content
 export interface UploadedData {
+    id: string; // Unique identifier for the study
+    name?: string; // Study name for organization
+    creator?: string; // Creator/researcher name
     participants: Participant[];
     tasks: {
         id: string;
@@ -129,4 +132,6 @@ export interface UploadedData {
         expectedAnswer: string;
     }[];
     treeStructure?: Item[]; // Optional if provided separately or inferred
+    createdAt: string; // ISO timestamp
+    updatedAt: string; // ISO timestamp
 }

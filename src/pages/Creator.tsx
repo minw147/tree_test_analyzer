@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Network, ClipboardList, Settings, Database, Share2, Eye, ExternalLink, Edit2, HelpCircle } from "lucide-react";
+import { Network, ClipboardList, Settings, Database, Share2, Eye, ExternalLink, Edit2 } from "lucide-react";
 import type { StudyConfig } from "@/lib/types/study";
 import { generateStudyId } from "@/lib/utils/id-generator";
 import { TreeEditor } from "@/components/creator/TreeEditor";
@@ -55,7 +55,6 @@ export function Creator() {
     const [activeTab, setActiveTab] = useState<TabType>("tree");
     const [editingName, setEditingName] = useState(false);
     const [editingCreator, setEditingCreator] = useState(false);
-    const [showStorageTooltip, setShowStorageTooltip] = useState(false);
     const [study, setStudy] = useState<StudyConfig>(loadStudyFromStorage());
 
     // Save to localStorage whenever study changes
@@ -120,24 +119,6 @@ export function Creator() {
                                             <Edit2 className="h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </h1>
                                     )}
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setShowStorageTooltip(!showStorageTooltip)}
-                                            className="flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                                        >
-                                            <HelpCircle className="h-4 w-4 text-gray-500" />
-                                            <span className="hidden sm:inline">Storage info</span>
-                                        </button>
-                                        {showStorageTooltip && (
-                                            <div className="absolute left-full top-0 ml-2 z-50 w-72 rounded-lg border bg-white p-4 shadow-lg ring-1 ring-black ring-opacity-5">
-                                                <h4 className="mb-2 font-semibold text-gray-900">Local Storage Notice</h4>
-                                                <ul className="mb-4 space-y-2 text-xs text-gray-600">
-                                                    <li>Your study setup is saved locally in this browser. It will be lost if you clear browser data or use a different device.</li>
-                                                    <li><strong>✓ Participant responses</strong> are stored in your configured external storage (Google Sheets, etc.) and persist independently.</li>
-                                                </ul>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
                                 {editingCreator ? (
                                     <Input

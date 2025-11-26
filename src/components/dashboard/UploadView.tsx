@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TreePathSelector } from "@/components/ui/tree-path-selector";
 
 interface UploadViewProps {
-    onDataLoaded: (data: UploadedData) => void;
+    onDataLoaded: (data: Omit<UploadedData, "id" | "createdAt" | "updatedAt">) => void;
 }
 
 const STORAGE_KEY_UPLOAD_FORM = "tree-test-upload-form";
@@ -36,7 +36,7 @@ const loadFormFromStorage = (): SavedFormData | null => {
 
 export function UploadView({ onDataLoaded }: UploadViewProps) {
     const savedForm = loadFormFromStorage();
-    
+
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [treeText, setTreeText] = useState(savedForm?.treeText || "");
@@ -325,13 +325,13 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
                                         <p className="text-sm font-medium text-gray-900">
                                             Click to upload or drag and drop
                                         </p>
-                                        <p className="text-xs text-gray-500">Excel files (.xlsx, .xls)</p>
+                                        <p className="text-xs text-gray-500">Excel or CSV files (.xlsx, .xls, .csv)</p>
                                     </div>
                                 </>
                             )}
                             <input
                                 type="file"
-                                accept=".xlsx,.xls"
+                                accept=".xlsx,.xls,.csv"
                                 className="absolute inset-0 cursor-pointer opacity-0"
                                 onChange={handleFileUpload}
                                 disabled={isProcessing}

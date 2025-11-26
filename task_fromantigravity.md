@@ -83,10 +83,17 @@
     * \[ ] Input validation
     * \[ ] SQL injection prevention
   * \[ ] Hosting setup:
-    * \[ ] Deploy to Railway/Render/Fly.io
+    * \[ ] Database: Supabase (PostgreSQL)
+    * \[ ] Backend API: Deploy to Railway/Render/Fly.io (or Supabase Edge Functions)
     * \[ ] Environment variables configuration
     * \[ ] Database migration scripts
     * \[ ] Backup strategy
+    * \[ ] Supabase keep-alive mechanism:
+      * \[ ] Set up weekly scheduled task to prevent database pausing
+      * \[ ] Option 1: Supabase Edge Function with pg_cron (PostgreSQL extension)
+      * \[ ] Option 2: External cron service (cron-job.org/EasyCron) that pings database weekly
+      * \[ ] Option 3: Simple scheduled query (SELECT 1) to keep connection active
+      * \[ ] Document keep-alive setup in deployment guide
 
 * \[ ] Implement Hosted Backend adapter (frontend)
   * \[ ] API client with authentication

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 export function Header() {
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm">
-            <div className="container mx-auto flex h-16 items-center justify-between px-4">
+            <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center gap-4">
                     <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                         <img src="/src/assets/logo.png" alt="TreePath Logo" className="h-8 w-8" />
