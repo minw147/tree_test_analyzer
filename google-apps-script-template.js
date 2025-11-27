@@ -345,40 +345,6 @@ function handleSaveConfig(studyId, config) {
       configSheet.appendRow([studyId, JSON.stringify(config)]);
     }
 
-    // Also set up headers in Results sheet with correct number of tasks
-    // This ensures headers match the actual study configuration
-    if (config && config.tasks && Array.isArray(config.tasks)) {
-      const numTasks = config.tasks.length;
-      let resultsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-      
-      // If Results sheet doesn't exist, create it
-      if (!resultsSheet) {
-        resultsSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(SHEET_NAME);
-        // New sheet - set up headers with correct number of tasks
-        setupHeaders(resultsSheet, numTasks);
-      } else {
-        // Sheet exists - check if we can safely update headers
-        const lastRow = resultsSheet.getLastRow();
-        const hasHeaders = lastRow > 0 && isHeaderRow(resultsSheet.getRange(1, 1, 1, resultsSheet.getLastColumn()).getValues()[0]);
-        
-        // If no headers exist, create them
-        if (!hasHeaders) {
-          setupHeaders(resultsSheet, numTasks);
-        } else if (lastRow === 1) {
-          // Only headers exist (no data rows) - safe to update headers to match config
-          const existingHeaders = resultsSheet.getRange(1, 1, 1, resultsSheet.getLastColumn()).getValues()[0];
-          const existingTaskCount = getTaskCountFromHeaders(existingHeaders);
-          
-          // Update headers to match config (only if different)
-          if (existingTaskCount !== numTasks) {
-            setupHeaders(resultsSheet, numTasks);
-          }
-        }
-        // If there's data (lastRow > 1), don't modify headers to avoid breaking existing data
-        // Headers will be expanded automatically when new data with more tasks is submitted
-      }
-    }
-
     return { success: true };
   } catch (error) {
     return { 
