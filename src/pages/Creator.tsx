@@ -14,31 +14,37 @@ import { exportStudyConfig } from "@/lib/study-exporter";
 import { Download, Globe, CheckCircle2, XCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { createStorageAdapter } from "@/lib/storage/factory";
+import { getGlobalCustomApiConfig, saveGlobalCustomApiConfig } from "@/lib/utils/global-settings";
 
 type TabType = "tree" | "tasks" | "settings" | "preview" | "storage" | "export";
 
 const STORAGE_KEY_STUDIES = "tree-test-studies";
 
 // Helper function to get default study
-const getDefaultStudy = (): StudyConfig => ({
-    id: generateStudyId(),
-    name: "Untitled Study",
-    creator: "",
-    tree: [],
-    tasks: [],
-    storage: {
-        type: "local-download",
-    },
-    settings: {
-        welcomeMessage: "# Welcome to this Tree Test\n\nThank you for participating!",
-        instructions: "# Instructions\n\nRead each task carefully and navigate through the tree to find where you think the answer would be located.",
-        completedMessage: "# Thank you!\n\nYour responses have been recorded.",
-    },
-    status: "draft",
-    accessStatus: "active",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-});
+const getDefaultStudy = (): StudyConfig => {
+    // Check if global Custom API config exists
+    const globalCustomApi = getGlobalCustomApiConfig();
+    
+    return {
+        id: generateStudyId(),
+        name: "Untitled Study",
+        creator: "",
+        tree: [],
+        tasks: [],
+        storage: globalCustomApi || {
+            type: "local-download",
+        },
+        settings: {
+            welcomeMessage: "# Welcome to this Tree Test\n\nThank you for participating!",
+            instructions: "# Instructions\n\nRead each task carefully and navigate through the tree to find where you think the answer would be located.",
+            completedMessage: "# Thank you!\n\nYour responses have been recorded.",
+        },
+        status: "draft",
+        accessStatus: "active",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+};
 
 // Migrate from old single-study format to new array format
 const migrateOldStorage = (): StudyConfig[] => {
@@ -429,7 +435,19 @@ export function Creator() {
                             <div>
                                 <StorageEditor
                                     config={study.storage}
-                                    onChange={(storage) => setStudy({ ...study, storage, updatedAt: new Date().toISOString() })}
+                                    onChange={(storage) => {
+                                        // Auto-save to global settings if Custom API is configured and global config doesn't exist
+                                        if (storage.type === 'custom-api' && storage.endpointUrl) {
+                                            const globalConfig = getGlobalCustomApiConfig();
+                                            if (!globalConfig || !globalConfig.endpointUrl) {
+                                                // Global config doesn't exist, auto-save
+                                                saveGlobalCustomApiConfig(storage);
+                                                // Show a brief notification (could be enhanced with toast notification)
+                                                console.log("Saved as default Custom API configuration");
+                                            }
+                                        }
+                                        setStudy({ ...study, storage, updatedAt: new Date().toISOString() });
+                                    }}
                                 />
                             </div>
                         )}

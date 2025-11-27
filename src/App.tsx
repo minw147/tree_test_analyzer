@@ -4,6 +4,7 @@ import { Landing } from "@/pages/Landing";
 import { Analyzer } from "@/pages/Analyzer";
 import { Creator } from "@/pages/Creator";
 import { Help } from "@/pages/Help";
+import { Settings } from "@/pages/Settings";
 import { ParticipantView } from "@/pages/ParticipantView";
 import { Preview } from "@/pages/Preview";
 import { Layout } from "@/components/layout/Layout";
@@ -29,6 +30,7 @@ function App() {
           <Route path="/analyze/:studyId" element={<Analyzer />} />
           <Route path="/create" element={<Creator />} />
           <Route path="/create/:studyId" element={<Creator />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/help" element={<Help />} />
         </Route>
         <Route path="/test/:studyId" element={<ParticipantView />} />

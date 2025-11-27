@@ -34,4 +34,11 @@ export interface StorageAdapter {
      * Used in the Creator UI when configuring storage.
      */
     testConnection(): Promise<{ success: boolean; error?: string }>;
+
+    /**
+     * Fetch all studies from storage.
+     * Optional method - only implemented by adapters that support listing studies (e.g., Custom API).
+     * Used for syncing studies from remote storage.
+     */
+    fetchAllStudies?(): Promise<{ studies: StudyConfig[] | null; error?: string }>;
 }

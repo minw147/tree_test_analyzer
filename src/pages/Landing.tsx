@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, BarChart3, FileEdit, Trash2, Clock, ArrowRight, HelpCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { Plus, BarChart3, FileEdit, Trash2, Clock, ArrowRight, HelpCircle, RefreshCw, Loader2, CheckCircle2, AlertCircle, X } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { StudyConfig } from "@/lib/types/study";
 import type { UploadedData } from "@/lib/types";
+import { getGlobalCustomApiConfig } from "@/lib/utils/global-settings";
+import { createStorageAdapter } from "@/lib/storage/factory";
 
 const STORAGE_KEY_STUDIES = "tree-test-studies";
 const STORAGE_KEY_ANALYZER_STUDIES = "tree-test-analyzer-studies";
@@ -15,6 +18,16 @@ export function Landing() {
     const [savedStudies, setSavedStudies] = useState<StudyConfig[]>([]);
     const [savedAnalyses, setSavedAnalyses] = useState<UploadedData[]>([]);
     const [showStorageTooltip, setShowStorageTooltip] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncResult, setSyncResult] = useState<{ success: boolean; message: string; count?: number } | null>(null);
+    const [dismissedSyncPrompt, setDismissedSyncPrompt] = useState(() => {
+        // Load dismissal state from localStorage
+        try {
+            return localStorage.getItem("dismissed-sync-prompt") === "true";
+        } catch {
+            return false;
+        }
+    });
 
     const loadStudies = () => {
         try {
@@ -96,6 +109,89 @@ export function Landing() {
         }
     };
 
+    const handleSyncFromApi = async () => {
+        const globalConfig = getGlobalCustomApiConfig();
+        if (!globalConfig || !globalConfig.endpointUrl) {
+            setSyncResult({ 
+                success: false, 
+                message: "Please configure Custom API in Settings first" 
+            });
+            return;
+        }
+
+        setIsSyncing(true);
+        setSyncResult(null);
+
+        try {
+            const adapter = createStorageAdapter(globalConfig);
+            
+            if (!adapter.fetchAllStudies) {
+                setSyncResult({ 
+                    success: false, 
+                    message: "Sync is not supported for this storage type" 
+                });
+                return;
+            }
+
+            const result = await adapter.fetchAllStudies();
+
+            if (!result.studies) {
+                setSyncResult({ 
+                    success: false, 
+                    message: result.error || "Failed to fetch studies from API" 
+                });
+                return;
+            }
+
+            // Load current local studies
+            const localStudiesJson = localStorage.getItem(STORAGE_KEY_STUDIES);
+            const localStudies: StudyConfig[] = localStudiesJson ? JSON.parse(localStudiesJson) : [];
+
+            // Create a map of local study IDs for quick lookup
+            const localStudyMap = new Map<string, StudyConfig>();
+            localStudies.forEach(study => {
+                localStudyMap.set(study.id, study);
+            });
+
+            // Merge: Add API studies that don't exist locally
+            // If study exists in both, prefer local version (keep local)
+            let addedCount = 0;
+            const mergedStudies = [...localStudies];
+
+            result.studies.forEach(apiStudy => {
+                if (!localStudyMap.has(apiStudy.id)) {
+                    mergedStudies.push(apiStudy);
+                    addedCount++;
+                }
+                // If exists in both, we keep the local version (already in mergedStudies)
+            });
+
+            // Save merged studies
+            localStorage.setItem(STORAGE_KEY_STUDIES, JSON.stringify(mergedStudies));
+
+            // Update state
+            setSavedStudies(mergedStudies);
+
+            setSyncResult({ 
+                success: true, 
+                message: `Sync completed successfully! ${addedCount} new study${addedCount !== 1 ? 'ies' : ''} added.`,
+                count: addedCount
+            });
+
+            // Clear sync result after 5 seconds
+            setTimeout(() => {
+                setSyncResult(null);
+            }, 5000);
+        } catch (error) {
+            setSyncResult({ 
+                success: false, 
+                message: error instanceof Error ? error.message : "Failed to sync studies from API" 
+            });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 p-8">
             <div className="max-w-7xl mx-auto space-y-8">
@@ -114,6 +210,26 @@ export function Landing() {
                             <BarChart3 className="w-4 h-4" />
                             Import Data
                         </Button>
+                        {getGlobalCustomApiConfig() && (
+                            <Button
+                                variant="outline"
+                                className="gap-2 whitespace-nowrap min-w-[140px]"
+                                onClick={handleSyncFromApi}
+                                disabled={isSyncing}
+                            >
+                                {isSyncing ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Syncing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <RefreshCw className="w-4 h-4" />
+                                        Sync from API
+                                    </>
+                                )}
+                            </Button>
+                        )}
                         <Button
                             className="gap-2 whitespace-nowrap min-w-[140px]"
                             onClick={() => navigate("/create?new=true")}
@@ -123,6 +239,19 @@ export function Landing() {
                         </Button>
                     </div>
                 </div>
+
+                {/* Sync Result Alert */}
+                {syncResult && (
+                    <Alert variant={syncResult.success ? "default" : "destructive"}>
+                        {syncResult.success ? (
+                            <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                            <AlertCircle className="h-4 w-4" />
+                        )}
+                        <AlertTitle>{syncResult.success ? "Sync Complete" : "Sync Failed"}</AlertTitle>
+                        <AlertDescription>{syncResult.message}</AlertDescription>
+                    </Alert>
+                )}
 
                 {/* Library Section */}
                 <div className="space-y-6">
@@ -137,7 +266,7 @@ export function Landing() {
                                 <span className="hidden sm:inline">Storage info</span>
                             </button>
                             {showStorageTooltip && (
-                                <div className="absolute left-full top-0 ml-2 z-50 w-72 rounded-lg border bg-white p-4 shadow-lg ring-1 ring-black ring-opacity-5">
+                                <div className="absolute left-full top-0 ml-2 z-50 w-96 rounded-lg border bg-white p-4 shadow-lg ring-1 ring-black ring-opacity-5">
                                     <h4 className="mb-2 font-semibold text-gray-900">Local Storage Notice</h4>
                                     <ul className="mb-4 space-y-2 text-xs text-gray-600">
                                         <li>Your studies and analysis data are saved locally in this browser. They will be lost if you clear browser data or use a different device.</li>
@@ -147,6 +276,73 @@ export function Landing() {
                             )}
                         </div>
                     </div>
+
+                    {/* Sync from API prompt */}
+                    {savedStudies.length === 0 && getGlobalCustomApiConfig() && !dismissedSyncPrompt && (
+                        <Alert className="bg-blue-50 border-blue-200 relative">
+                            <button
+                                onClick={() => {
+                                    setDismissedSyncPrompt(true);
+                                    localStorage.setItem("dismissed-sync-prompt", "true");
+                                }}
+                                className="absolute top-2 right-2 text-blue-600 hover:text-blue-800 transition-colors"
+                                aria-label="Dismiss"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                            <AlertCircle className="h-4 w-4 text-blue-600" />
+                            <AlertTitle className="text-blue-800">Can't find your previous studies?</AlertTitle>
+                            <AlertDescription className="text-blue-700">
+                                <p className="mb-2">
+                                    Try <strong>Sync from API</strong> to import studies from your Custom API backend.
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleSyncFromApi}
+                                    disabled={isSyncing}
+                                    className="mt-2"
+                                >
+                                    {isSyncing ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Syncing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <RefreshCw className="h-4 w-4 mr-2" />
+                                            Sync from API
+                                        </>
+                                    )}
+                                </Button>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
+                    {savedStudies.length === 0 && !getGlobalCustomApiConfig() && !dismissedSyncPrompt && (
+                        <Alert className="bg-amber-50 border-amber-200 relative">
+                            <button
+                                onClick={() => {
+                                    setDismissedSyncPrompt(true);
+                                    localStorage.setItem("dismissed-sync-prompt", "true");
+                                }}
+                                className="absolute top-2 right-2 text-amber-600 hover:text-amber-800 transition-colors"
+                                aria-label="Dismiss"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                            <AlertCircle className="h-4 w-4 text-amber-600" />
+                            <AlertTitle className="text-amber-800">Can't find your previous studies?</AlertTitle>
+                            <AlertDescription className="text-amber-700">
+                                <p className="mb-2">
+                                    If you've previously configured a Custom API for your studies, you can sync them from your API backend.
+                                </p>
+                                <p className="text-sm">
+                                    <strong>Note:</strong> You'll need to configure Custom API settings first in <Link to="/settings" className="text-blue-600 hover:underline font-medium">Settings</Link> before you can sync.
+                                </p>
+                            </AlertDescription>
+                        </Alert>
+                    )}
 
                     {savedStudies.length === 0 && savedAnalyses.length === 0 ? (
                         <div className="text-center py-12 bg-white rounded-lg border border-dashed border-gray-300">
@@ -193,6 +389,13 @@ export function Landing() {
                                 
                                 const config = statusConfig[displayStatus];
                                 
+                                // Get last status change date (closedAt > publishedAt > updatedAt)
+                                const lastStatusChangeDate = savedStudy.closedAt 
+                                    ? savedStudy.closedAt 
+                                    : savedStudy.publishedAt 
+                                        ? savedStudy.publishedAt 
+                                        : savedStudy.updatedAt;
+                                
                                 return (
                                     <Card key={savedStudy.id} className="group hover:shadow-md transition-shadow relative overflow-hidden">
                                         <div className={`absolute top-0 left-0 w-1 h-full ${config.border}`} />
@@ -205,25 +408,14 @@ export function Landing() {
                                                     <CardTitle className="text-lg font-bold text-gray-900">
                                                         {savedStudy.name || "Untitled Study"}
                                                     </CardTitle>
-                                                    <CardDescription className="text-xs space-y-0.5">
-                                                        <div>Created {new Date(savedStudy.createdAt).toLocaleDateString()}</div>
-                                                        {savedStudy.publishedAt && (
-                                                            <div>Published {new Date(savedStudy.publishedAt).toLocaleDateString()}</div>
-                                                        )}
-                                                        {savedStudy.closedAt && (
-                                                            <div>Closed {new Date(savedStudy.closedAt).toLocaleDateString()}</div>
-                                                        )}
-                                                    </CardDescription>
                                                 </div>
                                             </div>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="space-y-4">
-                                                <div className="text-sm text-gray-600">
-                                                    <div className="flex items-center gap-2">
-                                                        <Clock className="w-4 h-4" />
-                                                        <span>Last updated {new Date(savedStudy.updatedAt).toLocaleDateString()}</span>
-                                                    </div>
+                                                <div className="text-xs text-gray-600 flex items-center gap-2">
+                                                    <Clock className="w-4 h-4 flex-shrink-0" />
+                                                    <span>{new Date(lastStatusChangeDate).toLocaleDateString()}</span>
                                                 </div>
 
                                                 <div className="flex items-center gap-2 pt-2">
@@ -264,19 +456,14 @@ export function Landing() {
                                                 <CardTitle className="text-lg font-bold text-gray-900">
                                                     {analysis.name || "Imported Data"}
                                                 </CardTitle>
-                                                <CardDescription>
-                                                    {analysis.participants.length} Participants
-                                                </CardDescription>
                                             </div>
                                         </div>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="space-y-4">
-                                            <div className="text-sm text-gray-600">
-                                                <div className="flex items-center gap-2">
-                                                    <BarChart3 className="w-4 h-4" />
-                                                    <span>Ready to view</span>
-                                                </div>
+                                            <div className="text-xs text-gray-600 flex items-center gap-2">
+                                                <BarChart3 className="w-4 h-4 flex-shrink-0" />
+                                                <span>{analysis.participants.length} Participants</span>
                                             </div>
 
                                             <div className="flex items-center gap-2 pt-2">

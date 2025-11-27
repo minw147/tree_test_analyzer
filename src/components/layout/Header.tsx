@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Home, HelpCircle } from "lucide-react";
+import { Home, HelpCircle, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoImage from "@/assets/logo.png";
 
@@ -18,6 +18,11 @@ export function Header() {
                     <Link to="/">
                         <Button variant="ghost" size="icon" title="Home">
                             <Home className="h-5 w-5 text-gray-500" />
+                        </Button>
+                    </Link>
+                    <Link to="/settings">
+                        <Button variant="ghost" size="icon" title="Settings">
+                            <Settings className="h-5 w-5 text-gray-500" />
                         </Button>
                     </Link>
                     <Link to="/help">

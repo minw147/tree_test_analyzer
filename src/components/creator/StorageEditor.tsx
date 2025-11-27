@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { createStorageAdapter } from "@/lib/storage/factory";
+import { getGlobalCustomApiConfig, saveGlobalCustomApiConfig } from "@/lib/utils/global-settings";
 
 interface StorageEditorProps {
     config: StorageConfig;
@@ -21,7 +22,26 @@ export function StorageEditor({ config, onChange }: StorageEditorProps) {
     const [showCustomApiTooltip, setShowCustomApiTooltip] = useState(false);
     const [showScript, setShowScript] = useState(false);
     const [scriptCopied, setScriptCopied] = useState(false);
+    const [saveAsDefault, setSaveAsDefault] = useState(false);
+    const [usingGlobalConfig, setUsingGlobalConfig] = useState(false);
     const tooltipRef = useRef<HTMLDivElement>(null);
+
+    // Check if using global config
+    useEffect(() => {
+        if (config.type === 'custom-api') {
+            const globalConfig = getGlobalCustomApiConfig();
+            if (globalConfig && 
+                globalConfig.endpointUrl === config.endpointUrl &&
+                globalConfig.authType === config.authType &&
+                globalConfig.apiKey === config.apiKey) {
+                setUsingGlobalConfig(true);
+            } else {
+                setUsingGlobalConfig(false);
+            }
+        } else {
+            setUsingGlobalConfig(false);
+        }
+    }, [config]);
 
     // Close tooltip when clicking outside
     useEffect(() => {
@@ -838,7 +858,22 @@ function handleFetchConfig(studyId) {
                                 </Alert>
                             )}
 
-                            <div className="pt-2">
+                            {!usingGlobalConfig && config.endpointUrl && (
+                                <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
+                                    <input
+                                        type="checkbox"
+                                        id="save-as-default"
+                                        checked={saveAsDefault}
+                                        onChange={(e) => setSaveAsDefault(e.target.checked)}
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    />
+                                    <Label htmlFor="save-as-default" className="text-sm cursor-pointer">
+                                        Save as default for all new studies
+                                    </Label>
+                                </div>
+                            )}
+
+                            <div className="pt-2 flex gap-2">
                                 <Button 
                                     variant="outline" 
                                     size="sm"
@@ -854,6 +889,19 @@ function handleFetchConfig(studyId) {
                                         'Test Connection'
                                     )}
                                 </Button>
+                                {!usingGlobalConfig && config.endpointUrl && saveAsDefault && (
+                                    <Button
+                                        variant="default"
+                                        size="sm"
+                                        onClick={() => {
+                                            saveGlobalCustomApiConfig(config);
+                                            setSaveAsDefault(false);
+                                            setTestResult({ success: true, message: "Saved as default Custom API configuration!" });
+                                        }}
+                                    >
+                                        Save as Default
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     )}

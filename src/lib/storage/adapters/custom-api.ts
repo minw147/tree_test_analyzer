@@ -178,4 +178,38 @@ export class CustomApiAdapter implements StorageAdapter {
             return { success: false, error: error instanceof Error ? error.message : "Connection failed" };
         }
     }
+
+    async fetchAllStudies(): Promise<{ studies: StudyConfig[] | null; error?: string }> {
+        if (!this.config.endpointUrl) {
+            return { studies: null, error: "No endpoint URL configured" };
+        }
+
+        try {
+            const response = await fetch(`${this.config.endpointUrl}/studies`, {
+                method: 'GET',
+                headers: this.getHeaders(),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const studies = await response.json();
+            
+            // Ensure we return an array
+            if (Array.isArray(studies)) {
+                return { studies };
+            } else {
+                // Some APIs might return { studies: [...] } format
+                if (studies.studies && Array.isArray(studies.studies)) {
+                    return { studies: studies.studies };
+                }
+                return { studies: null, error: "Invalid response format: expected array of studies" };
+            }
+        } catch (error) {
+            console.error("Failed to fetch all studies from custom API:", error);
+            return { studies: null, error: error instanceof Error ? error.message : "Unknown error" };
+        }
+    }
 }

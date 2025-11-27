@@ -38,7 +38,7 @@
   * \[x] Auto-save on changes (local storage for now, will add backend auto-save in Phase 2)
   * \[ ] Auto-save to backend API for hosted backend users (Phase 2)
   * \[x] Editable study name and creator name
-  * \[x] Single study limitation (one study at a time in Creator mode)
+  * \[x] Multiple study support (array of studies in localStorage, each with unique ID)
   * \[x] Local storage warning tooltip
   * \[x] Status badge in Creator header (shows Draft/Published/Closed status)
 
@@ -124,6 +124,9 @@
     * \[ ] Optional custom headers configuration
     * \[x] "Free - Bring Your Own Backend" badge
     * \[ ] Link to REST API documentation
+    * \[ ] Show "Using global config" indicator when global Custom API config is available
+    * \[ ] Option to "Use global config" or "Configure for this study only"
+    * \[ ] Auto-save to global settings when user configures Custom API (with confirmation)
   * \[x] Test connection button
   * \[ ] Connection status indicator
 
@@ -134,9 +137,14 @@
   * \[x] Check study status (GET /studies/:studyId/status)
   * \[x] Update study status (PUT /studies/:studyId/status)
   * \[x] Fetch study configuration (GET /studies/:studyId)
+  * \[ ] Fetch all studies (GET /studies) - for sync functionality
   * \[x] Test connection functionality
   * \[x] Error handling and retry logic
   * \[x] Support for standard HTTP authentication methods
+  * \[ ] Global Custom API configuration support:
+    * \[ ] Use global config from Settings when available
+    * \[ ] Allow per-study override of global config
+    * \[ ] Auto-save study-level config to global settings (when configured in study storage editor)
 
 * \[x] Implement Google Sheets adapter (optional, free/BYOS)
   * \[x] Google Sheets Apps Script method (webhook-based)
@@ -154,10 +162,6 @@
       * \[x] Enables cross-device study loading without authentication
       * \[x] Returns study config directly from StudyConfigs tab
       * \[x] Participant view supports webhook URL in URL parameter for cross-device links
-    * \[x] Public lookup endpoint (`doGet()` function)
-      * \[x] Supports GET requests: `?action=lookup&studyId=...`
-      * \[x] Enables cross-device study loading without authentication
-      * \[x] Returns study config directly from StudyConfigs tab
   * \[ ] Google Sheets OAuth API method (direct API access)
     * \[ ] OAuth flow implementation
     * \[ ] Direct Google Sheets API integration
@@ -173,10 +177,46 @@
     * \[x] Apps Script deployment instructions
     * \[x] Setup guide in Help page
     * \[x] CORS troubleshooting guidance
+    * \[x] Multiple studies with Google Sheets documentation
+    * \[x] Manual study status management in Google Sheets documentation
 
 * \[x] Create storage adapter factory
   * \[x] Factory utility to create adapter instances from storage config
   * \[x] Support for Custom API, Local Download, and Google Sheets adapters
+
+* \[ ] Build Global Settings / User Preferences
+  * \[ ] Create Settings page (`/settings`)
+    * \[ ] Add Settings link to Header navigation
+    * \[ ] Add route in App.tsx
+    * \[ ] Settings page layout and UI
+  * \[ ] Global Custom API configuration
+    * \[ ] Store global Custom API config in localStorage (`tree-test-global-settings`)
+    * \[ ] Settings page form for Custom API configuration:
+      * \[ ] API endpoint URL input
+      * \[ ] Authentication method selector (API Key / Bearer Token / None)
+      * \[ ] API key/credentials input (masked)
+      * \[ ] Test connection button
+      * \[ ] Save/update global config
+    * \[ ] Auto-save from Study Storage Editor:
+      * \[ ] When user configures Custom API in a study's storage page, auto-save to global settings (if global config doesn't exist)
+      * \[ ] Show indicator: "This will be saved as your default Custom API configuration"
+      * \[ ] Optional: Allow user to choose "Save as default" or "Use only for this study"
+  * \[ ] Default storage configuration for new studies
+    * \[ ] New studies use global Custom API config by default (if available)
+    * \[ ] Fallback to `local-download` if no global config exists
+    * \[ ] Allow per-study override (studies can use different storage types)
+  * \[ ] Sync from Custom API functionality
+    * \[ ] Add "Sync from API" button in Settings page (below Custom API configuration)
+    * \[ ] Add "Sync from API" button on Landing page
+    * \[ ] Sync functionality:
+      * \[ ] Fetch all studies from Custom API (`GET /studies` endpoint)
+      * \[ ] Merge API studies with local studies (additive, not replacing)
+      * \[ ] Handle duplicate studies (by ID) - keep local version or merge intelligently
+      * \[ ] Show sync status (loading, success, error)
+      * \[ ] Display number of studies added/updated
+      * \[ ] Error handling for network failures, authentication errors
+    * \[ ] Sync only works if global Custom API config is set
+    * \[ ] Show message if no global config: "Configure Custom API in Settings first"
 
 * \[ ] Create documentation
   * \[ ] Hosted Backend setup guide:
@@ -189,6 +229,8 @@
     * \[x] Deployment instructions (gear icon, web app settings)
     * \[x] CORS troubleshooting guidance
     * \[x] Setup guide in Help page
+    * \[x] Multiple studies with Google Sheets documentation
+    * \[x] Manual study status management in Google Sheets documentation
     * \[ ] OAuth API method setup instructions (when implemented)
   * \[ ] Custom API setup guide (free/BYOS option):
     * \[ ] REST API specification document:
@@ -197,9 +239,12 @@
         * \[ ] GET /studies/:studyId/status - Check study status
         * \[ ] PUT /studies/:studyId/status - Update study status
         * \[ ] GET /studies/:studyId - Fetch study configuration
+        * \[ ] GET /studies - List all studies (for sync functionality)
       * \[ ] Request/response payload schemas
       * \[ ] Authentication requirements
       * \[ ] Example requests and responses
+      * \[ ] Global Custom API configuration documentation
+      * \[ ] Sync from API functionality documentation
     * \[ ] Implementation examples:
       * \[ ] Simple Express.js server example
       * \[ ] Simple Python/FastAPI server example
@@ -406,11 +451,14 @@
       * \[ ] Option A: URL parameter: `/test/:studyId?api=https://api.example.com`
       * \[ ] Option B: Study registry service (maps studyId → endpointUrl)
       * \[ ] Document both options for Custom API users
-* \[ ] Implement study status check on load
-  * \[ ] Check status via hosted backend API (default)
-    * \[ ] Check status via custom API (if custom API storage)
-  * \[ ] Show "Study Closed" message if inactive
-  * \[ ] Handle status check errors gracefully
+* \[x] Implement study status check on load
+  * \[x] Check status immediately when data collection link is opened (before allowing test to start)
+  * \[x] Check status via Google Sheets Apps Script (if Google Sheets storage)
+  * \[x] Check status via custom API (if custom API storage)
+  * \[ ] Check status via hosted backend API (when implemented)
+  * \[x] Show "Study Closed" message if inactive
+  * \[x] Handle status check errors gracefully
+  * \[x] Pre-submission status verification (double-check before allowing submission)
 
 * \[x] Implement interactive tree component
   * \[x] Expand/collapse navigation
@@ -423,6 +471,8 @@
   * \[x] Progress indicator
   * \[x] Navigation between tasks
   * \[x] Confidence rating input (1-7 scale) with submit button
+  * \[x] Allow participant to skip task/question at any time
+  * \[x] Differentiate between "Direct Skip" (no interaction) and "Indirect Skip" (some interaction) for task outcomes
 
 * \[x] Implement data tracking
   * \[x] Click/path tracking
@@ -432,58 +482,63 @@
 
 ## Phase 5: Data Submission
 
-* \[ ] Required Data Format for Analyzer Compatibility
-  * \[ ] Data format MUST align with analyzer's data-parser.ts requirements
-  * \[ ] Participant Metadata (required columns):
-    * \[ ] Participant ID - Unique identifier (e.g., "P001", "P002")
-    * \[ ] Status - Either "Completed" or "Abandoned"
-    * \[ ] Start Time (UTC) - ISO timestamp when test started
-    * \[ ] End Time (UTC) - ISO timestamp when test ended (or null if abandoned)
-    * \[ ] Time Taken - Total duration in HH:MM:SS format (e.g., "00:05:23")
-  * \[ ] For Each Task (Task 1, Task 2, Task 3, etc.):
-    * \[ ] Task X Path Taken - The full path the participant selected (e.g., "Home/Products/Electronics/Laptops")
-    * \[ ] Task X Path Outcome - One of:
-      * \[ ] "Direct Success" - Found correct answer directly
-      * \[ ] "Indirect Success" - Found correct answer but wandered
-      * \[ ] "Failure" - Ended at wrong location
-      * \[ ] "Skip" - Skipped the task
-    * \[ ] Task X: How confident are you with your answer? - Confidence rating (1-5 scale, as number)
-    * \[ ] Task X Time - Time spent on this specific task in seconds (as number)
-  * \[ ] Implementation requirements:
-    * \[ ] Track all required data points during participant test (Phase 4)
-    * \[ ] Export to CSV/Excel in the exact format above
-    * \[ ] Store data according to the study's storage configuration:
-      * \[ ] Local download: Generate CSV/Excel file with all required columns
-      * \[ ] Hosted backend: POST data in this structure (JSON format, backend converts to CSV/Excel)
-      * \[ ] Custom API: POST data in this structure (JSON format, custom backend handles conversion)
+* \[x] Required Data Format for Analyzer Compatibility
+  * \[x] Data format MUST align with analyzer's data-parser.ts requirements
+  * \[x] Participant Metadata (required columns):
+    * \[x] Participant ID - Unique identifier (e.g., "P001", "P002")
+    * \[x] Status - Either "Completed" or "Abandoned"
+    * \[x] Start Time (UTC) - ISO timestamp when test started
+    * \[x] End Time (UTC) - ISO timestamp when test ended (or null if abandoned)
+    * \[x] Time Taken - Total duration in HH:MM:SS format (e.g., "00:05:23")
+  * \[x] For Each Task (Task 1, Task 2, Task 3, etc.):
+    * \[x] Task X Path Taken - The full path the participant selected (e.g., "Home/Products/Electronics/Laptops")
+    * \[x] Task X Path Outcome - One of:
+      * \[x] "Direct Success" - Found correct answer directly
+      * \[x] "Indirect Success" - Found correct answer but wandered
+      * \[x] "Failure" - Ended at wrong location
+      * \[x] "Direct Skip" - Skipped the task with no interaction
+      * \[x] "Indirect Skip" - Skipped the task after some interaction
+    * \[x] Task X: How confident are you with your answer? - Confidence rating (1-7 scale, as number)
+    * \[x] Task X Time - Time spent on this specific task in seconds (as number)
+  * \[x] Implementation requirements:
+    * \[x] Track all required data points during participant test (Phase 4)
+    * \[x] Export to CSV/Excel in the exact format above
+    * \[x] Store data according to the study's storage configuration:
+      * \[x] Local download: Generate CSV/Excel file with all required columns
+      * \[x] Google Sheets: Append row with all required columns
+      * \[x] Custom API: POST data in this structure (JSON format, custom backend handles conversion)
+      * \[ ] Hosted backend: POST data in this structure (JSON format, backend converts to CSV/Excel) - when implemented
 
-* \[ ] Create data submission service
-  * \[ ] Format participant data according to analyzer-compatible format
-  * \[ ] Generate CSV/Excel export with all required columns
-  * \[ ] Convert internal data structure to required format:
-    * \[ ] Participant metadata (ID, Status, timestamps, duration)
-    * \[ ] Task results (path taken, outcome, confidence, time) for each task
-    * \[ ] Ensure column names match exactly: "Participant ID", "Status", "Start Time (UTC)", "End Time (UTC)", "Time Taken", "Task X Path Taken", "Task X Path Outcome", "Task X: How confident are you with your answer?", "Task X Time"
-* \[ ] Implement adapter dispatch logic
-  * \[ ] Route to appropriate adapter based on storage config:
-    * \[ ] Hosted Backend adapter (default, if hosted backend selected)
+* \[x] Create data submission service
+  * \[x] Format participant data according to analyzer-compatible format
+  * \[x] Generate CSV/Excel export with all required columns
+  * \[x] Convert internal data structure to required format:
+    * \[x] Participant metadata (ID, Status, timestamps, duration)
+    * \[x] Task results (path taken, outcome, confidence, time) for each task
+    * \[x] Ensure column names match exactly: "Participant ID", "Status", "Start Time (UTC)", "End Time (UTC)", "Time Taken", "Task X Path Taken", "Task X Path Outcome", "Task X: How confident are you with your answer?", "Task X Time"
+* \[x] Implement adapter dispatch logic
+  * \[x] Route to appropriate adapter based on storage config:
+    * \[ ] Hosted Backend adapter (default, if hosted backend selected) - when implemented
       * \[ ] Submit data in JSON format matching required structure
       * \[ ] Backend converts to CSV/Excel for storage/export
-    * \[ ] Custom API adapter (if custom API storage selected - free/BYOS)
-      * \[ ] Submit data in JSON format matching required structure
-      * \[ ] Custom backend must handle conversion to CSV/Excel if needed
-    * \[ ] Local download adapter (if local-download selected)
-      * \[ ] Generate CSV/Excel file with all required columns
-      * \[ ] Trigger browser download
-  * \[ ] Handle status check before submission
+    * \[x] Custom API adapter (if custom API storage selected - free/BYOS)
+      * \[x] Submit data in JSON format matching required structure
+      * \[x] Custom backend must handle conversion to CSV/Excel if needed
+    * \[x] Google Sheets adapter (if Google Sheets storage selected)
+      * \[x] Format data in analyzer-compatible format
+      * \[x] Append row to Google Sheets with all required columns
+    * \[x] Local download adapter (if local-download selected)
+      * \[x] Generate CSV/Excel file with all required columns
+      * \[x] Trigger browser download
+  * \[x] Handle status check before submission
 * \[ ] Add retry logic for failed submissions
-* \[ ] Show completion message
-* \[ ] Handle errors gracefully
-  * \[ ] Network errors
-  * \[ ] Study closed errors
-  * \[ ] Authentication errors (hosted backend)
-    * \[ ] Invalid custom API URL errors (custom API storage)
-  * \[ ] Backend API errors
+* \[x] Show completion message
+* \[x] Handle errors gracefully
+  * \[x] Network errors
+  * \[x] Study closed errors
+  * \[ ] Authentication errors (hosted backend) - when implemented
+    * \[x] Invalid custom API URL errors (custom API storage)
+  * \[x] Backend API errors
 
 ## Phase 6: Integration \& Testing
 
