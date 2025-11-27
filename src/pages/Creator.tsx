@@ -606,20 +606,42 @@ export function Creator() {
                                                     <p className="text-sm text-gray-600 mb-4">
                                                         Share this link with participants to take your tree test.
                                                     </p>
-                                                    <div className="flex items-center gap-2">
-                                                        <Input
-                                                            readOnly
-                                                            value={`${window.location.origin}/test/${study.id}`}
-                                                            className="font-mono text-sm"
-                                                        />
-                                                        <Button
-                                                            variant="outline"
-                                                            onClick={() => {
-                                                                navigator.clipboard.writeText(`${window.location.origin}/test/${study.id}`);
-                                                            }}
-                                                        >
-                                                            Copy Link
-                                                        </Button>
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <Input
+                                                                readOnly
+                                                                value={`${window.location.origin}/test/${study.id}`}
+                                                                className="font-mono text-sm"
+                                                            />
+                                                            <Button
+                                                                variant="outline"
+                                                                onClick={() => {
+                                                                    navigator.clipboard.writeText(`${window.location.origin}/test/${study.id}`);
+                                                                }}
+                                                            >
+                                                                Copy Link
+                                                            </Button>
+                                                        </div>
+                                                        {/* Add webhook URL parameter for Google Sheets cross-device access */}
+                                                        {study.storage?.type === 'google-sheets' && study.storage?.webhookUrl && (
+                                                            <div className="flex items-center gap-2">
+                                                                <Input
+                                                                    readOnly
+                                                                    value={`${window.location.origin}/test/${study.id}?webhook=${encodeURIComponent(study.storage.webhookUrl || '')}`}
+                                                                    className="font-mono text-xs"
+                                                                    title="Cross-device link (includes webhook URL for Google Sheets)"
+                                                                />
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        navigator.clipboard.writeText(`${window.location.origin}/test/${study.id}?webhook=${encodeURIComponent(study.storage.webhookUrl || '')}`);
+                                                                    }}
+                                                                >
+                                                                    Copy Cross-Device Link
+                                                                </Button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     {study.accessStatus === 'closed' && (
                                                         <Alert className="mt-4 bg-yellow-50 border-yellow-200">

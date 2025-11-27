@@ -22,6 +22,13 @@
  * - If you get "function was deleted" error: Make sure you saved the script before deploying
  * - If updating an existing deployment: Click "Manage deployments" → Edit (pencil icon) → Deploy again
  * - Always verify the script saved successfully before deploying
+ * 
+ * CROSS-DEVICE ACCESS:
+ * This script supports public study lookup for cross-device access.
+ * Participants can access studies from any device using:
+ * - Standard link: /test/:studyId (works from same browser)
+ * - Cross-device link: /test/:studyId?webhook=YOUR_WEBHOOK_URL (works from any device)
+ * The cross-device link is automatically generated in the Creator's "Launch Study" tab.
  */
 
 // Configuration
@@ -34,6 +41,35 @@ const CONFIG_SHEET_NAME = 'StudyConfigs'; // Sheet for storing study configurati
 function createResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Main doGet function - handles public GET requests for study lookup
+ * Allows participants to fetch study config without authentication
+ * Usage: ?action=lookup&studyId=study-123
+ */
+function doGet(e) {
+  try {
+    const action = e.parameter.action;
+    const studyId = e.parameter.studyId;
+    
+    if (action === 'lookup' && studyId) {
+      // Public lookup endpoint - fetch study config by ID
+      const result = handleFetchConfig(studyId);
+      return createResponse(result);
+    }
+    
+    // Default response for invalid requests
+    return createResponse({ 
+      success: false, 
+      error: 'Invalid request. Use ?action=lookup&studyId=study-id' 
+    });
+  } catch (error) {
+    return createResponse({ 
+      success: false, 
+      error: error.toString() 
+    });
+  }
 }
 
 /**

@@ -190,7 +190,25 @@ export class GoogleSheetsAppsScriptAdapter implements StorageAdapter {
         }
 
         try {
-            // Use form-encoded data to avoid CORS preflight issues with Google Apps Script
+            // Try GET request first (public lookup endpoint - no CORS preflight)
+            const getUrl = `${this.config.webhookUrl}?action=lookup&studyId=${encodeURIComponent(studyId)}`;
+            try {
+                const getResponse = await fetch(getUrl, {
+                    method: 'GET',
+                });
+
+                if (getResponse.ok) {
+                    const getData = await getResponse.json();
+                    if (getData.config) {
+                        return { config: getData.config };
+                    }
+                }
+            } catch (getError) {
+                // Fall through to POST if GET fails
+                console.warn("GET request failed, trying POST:", getError);
+            }
+
+            // Fallback to POST request (form-encoded to avoid CORS preflight)
             const formData = new URLSearchParams();
             formData.append('payload', JSON.stringify({
                 action: 'fetchConfig',

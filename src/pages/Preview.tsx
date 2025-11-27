@@ -31,6 +31,6 @@ export function Preview() {
         );
     }
 
-    return <ParticipantPreview study={study} />;
+    return <ParticipantPreview study={study} isPreview={true} />;
 }
 

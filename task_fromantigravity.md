@@ -109,7 +109,7 @@
   * \[ ] Token refresh logic
 
 * \[x] Create storage configuration UI
-  * \[x] Storage type selector (Hosted Backend / Custom API / Local Download)
+  * \[x] Storage type selector (Hosted Backend / Google Sheets / Custom API / Local Download)
   * \[ ] Default to "Hosted Backend" with upgrade/pricing info
   * \[ ] Hosted Backend configuration:
     * \[ ] User registration/login flow
@@ -138,9 +138,45 @@
   * \[x] Error handling and retry logic
   * \[x] Support for standard HTTP authentication methods
 
+* \[x] Implement Google Sheets adapter (optional, free/BYOS)
+  * \[x] Google Sheets Apps Script method (webhook-based)
+    * \[x] Apps Script template with CORS handling (form-encoded data)
+    * \[x] Webhook URL configuration
+    * \[x] Save study configuration to Google Sheets (StudyConfigs tab)
+    * \[x] Submit participant results (appendRow to Results tab)
+    * \[x] Check study status
+    * \[x] Update study status
+    * \[x] Fetch study configuration
+    * \[x] Test connection functionality
+    * \[x] Form-encoded data to avoid CORS preflight issues
+    * \[x] Public lookup endpoint (`doGet()` function) for cross-device access
+      * \[x] Supports GET requests: `?action=lookup&studyId=...`
+      * \[x] Enables cross-device study loading without authentication
+      * \[x] Returns study config directly from StudyConfigs tab
+      * \[x] Participant view supports webhook URL in URL parameter for cross-device links
+    * \[x] Public lookup endpoint (`doGet()` function)
+      * \[x] Supports GET requests: `?action=lookup&studyId=...`
+      * \[x] Enables cross-device study loading without authentication
+      * \[x] Returns study config directly from StudyConfigs tab
+  * \[ ] Google Sheets OAuth API method (direct API access)
+    * \[ ] OAuth flow implementation
+    * \[ ] Direct Google Sheets API integration
+    * \[ ] Sheet ID and name configuration
+  * \[x] Storage configuration UI for Google Sheets
+    * \[x] Google Sheets card in storage selector
+    * \[x] Method selector (Apps Script / OAuth API)
+    * \[x] Apps Script setup instructions
+    * \[x] Script copy/download functionality
+    * \[x] Webhook URL input
+    * \[x] OAuth API configuration inputs (placeholder)
+  * \[x] Help documentation for Google Sheets setup
+    * \[x] Apps Script deployment instructions
+    * \[x] Setup guide in Help page
+    * \[x] CORS troubleshooting guidance
+
 * \[x] Create storage adapter factory
   * \[x] Factory utility to create adapter instances from storage config
-  * \[x] Support for Custom API and Local Download adapters
+  * \[x] Support for Custom API, Local Download, and Google Sheets adapters
 
 * \[ ] Create documentation
   * \[ ] Hosted Backend setup guide:
@@ -148,6 +184,12 @@
     * \[ ] Pricing and subscription plans
     * \[ ] API documentation
     * \[ ] Data privacy and security information
+  * \[x] Google Sheets setup guide (free/BYOS option):
+    * \[x] Apps Script method setup instructions
+    * \[x] Deployment instructions (gear icon, web app settings)
+    * \[x] CORS troubleshooting guidance
+    * \[x] Setup guide in Help page
+    * \[ ] OAuth API method setup instructions (when implemented)
   * \[ ] Custom API setup guide (free/BYOS option):
     * \[ ] REST API specification document:
       * \[ ] Endpoint documentation:
@@ -193,14 +235,17 @@
   * \[ ] Auto-save draft studies (on changes or manual save):
     * \[ ] Hosted backend: Auto-save to backend API (POST /api/studies or PUT /api/studies/:id)
     * \[x] Custom API: Save to custom API endpoint (POST /studies or PUT /studies/:id)
+    * \[x] Google Sheets: Save to Google Sheets on publish/unpublish (Apps Script method)
     * \[x] Local Download: Save to localStorage only
   * \[x] Mark study as "draft" or "published" status
   * \[x] Store study config to storage when publishing:
     * \[ ] Hosted backend: Automatically on save (drafts and published studies)
     * \[x] Custom API: On publish to custom API endpoint
+    * \[x] Google Sheets: On publish/unpublish to Google Sheets (Apps Script method)
     * \[x] Local Download: localStorage only (no remote storage)
   * \[x] Generate shareable participant link with study ID only
   * \[x] Link format: `/test/:studyId` (e.g., `/test/study-abc123`)
+  * \[x] Cross-device link for Google Sheets: `/test/:studyId?webhook=...` (includes webhook URL)
   * \[x] Only published studies can be shared via participant link
   * \[x] Validation before publishing:
     * \[x] Ensure tree structure is not empty
@@ -225,6 +270,7 @@
   * \[x] Storage-specific publish behavior:
     * \[ ] Hosted Backend: Save to backend API, show success/error
     * \[x] Custom API: Save to custom API, show success/error
+    * \[x] Google Sheets: Save to Google Sheets via Apps Script, show success/error
     * \[x] Local Download: Save to localStorage, show instructions for sharing
   * \[x] Export study configuration JSON (Step 1 - Build First):
     * \[x] "Download Study Config" button in Launch Study tab
@@ -334,41 +380,55 @@
 
 * \[ ] Create participant view layout
 * \[ ] Build welcome/instructions screen
-* \[ ] Implement study config loading on participant view
-  * \[ ] Extract study ID from route parameter (`/test/:studyId`)
-  * \[ ] Try hosted backend API first (default)
-    * \[ ] Fallback to custom API if backend fails (for backward compatibility)
-  * \[ ] Fetch study configuration:
-    * \[ ] From hosted backend API (`GET /api/studies/:studyId`) - primary
-    * \[ ] From custom API endpoint (`GET /studies/:studyId`) - BYOS option
-  * \[ ] Handle loading states (loading spinner)
-  * \[ ] Handle errors (study not found, network errors, invalid credentials)
-  * \[ ] Display error messages gracefully
+* \[x] Implement study config loading on participant view
+  * \[x] Extract study ID from route parameter (`/test/:studyId`)
+  * \[x] Loading strategy (in order of priority):
+    * \[x] Try sessionStorage first (for preview/testing)
+    * \[x] Try localStorage (for same-browser access)
+    * \[x] Try to fetch from storage adapter if storage config is available:
+      * \[x] Google Sheets: Fetch from Apps Script webhook (via `fetchConfig` action)
+      * \[x] Custom API: Fetch from custom API endpoint (`GET /studies/:studyId`)
+      * \[ ] Hosted Backend: Fetch from hosted backend API (`GET /api/studies/:studyId`) - when implemented
+    * \[x] Fallback to local config if fetch fails
+  * \[x] Handle loading states (loading spinner)
+  * \[x] Handle errors (study not found, network errors, invalid credentials)
+  * \[x] Display error messages gracefully
+  * \[x] Cross-device study loading solutions:
+    * \[x] Google Sheets: Enhanced Apps Script with public `doGet()` lookup endpoint
+      * \[x] Supports GET requests: `?action=lookup&studyId=...`
+      * \[x] Returns study config directly from StudyConfigs tab
+      * \[x] No authentication required (public endpoint)
+      * \[x] Participant view can call webhook URL directly if known
+    * \[ ] Hosted Backend: Direct API call (no registry needed)
+      * \[ ] Public endpoint: `GET /api/studies/:studyId` (no auth for participants)
+      * \[ ] Participant view calls backend API directly
+    * \[ ] Custom API: URL parameter or registry
+      * \[ ] Option A: URL parameter: `/test/:studyId?api=https://api.example.com`
+      * \[ ] Option B: Study registry service (maps studyId → endpointUrl)
+      * \[ ] Document both options for Custom API users
 * \[ ] Implement study status check on load
   * \[ ] Check status via hosted backend API (default)
     * \[ ] Check status via custom API (if custom API storage)
   * \[ ] Show "Study Closed" message if inactive
   * \[ ] Handle status check errors gracefully
 
-* \[ ] Implement interactive tree component
-
-  * \[ ] Expand/collapse navigation
-  * \[ ] Breadcrumb trail
-  * \[ ] Selection feedback
+* \[x] Implement interactive tree component
+  * \[x] Expand/collapse navigation
+  * \[x] Breadcrumb trail
+  * \[x] Selection feedback
   * \[x] "I'd find it here" button on last clicked node (from preview)
 
-* \[ ] Build task progression system
+* \[x] Build task progression system
+  * \[x] Task display
+  * \[x] Progress indicator
+  * \[x] Navigation between tasks
+  * \[x] Confidence rating input (1-7 scale) with submit button
 
-  * \[ ] Task display
-  * \[ ] Progress indicator
-  * \[ ] Navigation between tasks
-
-* \[ ] Implement data tracking
-
-  * \[ ] Click/path tracking
-  * \[ ] Time tracking (active time only)
-  * \[ ] Task completion detection
-  * \[ ] Track all required data points in analyzer-compatible format (see Phase 5 for format specification)
+* \[x] Implement data tracking
+  * \[x] Click/path tracking
+  * \[x] Time tracking (active time only)
+  * \[x] Task completion detection
+  * \[x] Track all required data points in analyzer-compatible format (see Phase 5 for format specification)
 
 ## Phase 5: Data Submission
 

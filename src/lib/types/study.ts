@@ -67,7 +67,7 @@ export interface TaskResult {
     taskDescription: string;
     pathTaken: string[]; // Array of node names clicked
     outcome: PathOutcome;
-    confidence?: number; // 1-5 rating
+    confidence?: number; // 1-7 rating
     timeSeconds: number; // Time spent on this task in seconds
     timestamp: string;
 }

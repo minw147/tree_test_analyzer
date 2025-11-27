@@ -1,11 +1,20 @@
-import { useState } from "react";
-import { ChevronRight, ChevronDown, Folder, File, Home, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronRight, ChevronDown, Folder, File, Home, Check, Loader2 } from "lucide-react";
 import type { StudyConfig, TreeNode } from "@/lib/types/study";
 import type { Item } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface ParticipantPreviewProps {
     study: StudyConfig;
+    // Optional callbacks for data tracking (used in actual participant view)
+    onTestStart?: (taskIndex: number) => void;
+    onNodeClick?: (taskIndex: number, path: string) => void;
+    onTaskComplete?: (taskIndex: number, selectedPath: string, confidence?: number) => void;
+    onTestComplete?: (results: Array<{ taskIndex: number; selectedPath: string; confidence?: number }>) => void;
+    isSubmitting?: boolean;
+    isPreview?: boolean; // If true, shows preview banner and doesn't track data
 }
 
 // Convert TreeNode[] to Item[]
@@ -19,13 +28,23 @@ const convertTreeNodesToItems = (nodes: TreeNode[]): Item[] => {
 
 type TestPhase = "welcome" | "instructions" | "task" | "completed";
 
-export function ParticipantPreview({ study }: ParticipantPreviewProps) {
+export function ParticipantPreview({ 
+    study, 
+    onTestStart,
+    onNodeClick,
+    onTaskComplete,
+    onTestComplete,
+    isSubmitting = false,
+    isPreview = false,
+}: ParticipantPreviewProps) {
     const [phase, setPhase] = useState<TestPhase>("welcome");
     const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
     const [lastClickedPath, setLastClickedPath] = useState<string>("");
     const [selectedPath, setSelectedPath] = useState<string>("");
     const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
+    const [confidence, setConfidence] = useState<number | undefined>(undefined);
+    const [taskResults, setTaskResults] = useState<Array<{ taskIndex: number; selectedPath: string; confidence?: number }>>([]);
 
     const items = convertTreeNodesToItems(study.tree);
     const currentTask = study.tasks[currentTaskIndex];
@@ -50,6 +69,11 @@ export function ParticipantPreview({ study }: ParticipantPreviewProps) {
         // Update breadcrumb
         const pathParts = path.split("/").filter(Boolean);
         setBreadcrumb(pathParts);
+        
+        // Track node click if callback provided
+        if (onNodeClick && phase === "task") {
+            onNodeClick(currentTaskIndex, path);
+        }
     };
 
     const handleBreadcrumbClick = (index: number) => {
@@ -70,11 +94,35 @@ export function ParticipantPreview({ study }: ParticipantPreviewProps) {
     };
 
     const handleFindItHere = (path: string) => {
-        // Set as selected path
+        // Set as selected path - this will show the confidence rating
         setSelectedPath(path);
         setLastClickedPath("");
+        // Don't move to next task yet - wait for confidence submission
+    };
+
+    const handleSubmitConfidence = () => {
+        if (!selectedPath) return;
+        
+        // Store task result
+        const result = {
+            taskIndex: currentTaskIndex,
+            selectedPath: selectedPath,
+            confidence: confidence,
+        };
+        setTaskResults(prev => [...prev, result]);
+        
+        // Call task complete callback if provided
+        if (onTaskComplete) {
+            onTaskComplete(currentTaskIndex, selectedPath, confidence);
+        }
+        
         // Move to next task or complete
         if (isLastTask) {
+            // All tasks complete - submit results
+            if (onTestComplete) {
+                const allResults = [...taskResults, result];
+                onTestComplete(allResults);
+            }
             setPhase("completed");
         } else {
             setCurrentTaskIndex(currentTaskIndex + 1);
@@ -82,6 +130,7 @@ export function ParticipantPreview({ study }: ParticipantPreviewProps) {
             setExpandedNodes(new Set());
             setBreadcrumb([]);
             setLastClickedPath("");
+            setConfidence(undefined); // Reset confidence for next task
         }
     };
 
@@ -101,10 +150,21 @@ export function ParticipantPreview({ study }: ParticipantPreviewProps) {
         if (study.tasks.length > 0) {
             setPhase("task");
             setCurrentTaskIndex(0);
+            // Call test start callback if provided
+            if (onTestStart) {
+                onTestStart(0);
+            }
         } else {
             setPhase("completed");
         }
     };
+    
+    // Track task start when task phase begins
+    useEffect(() => {
+        if (phase === "task" && onTestStart) {
+            onTestStart(currentTaskIndex);
+        }
+    }, [phase, currentTaskIndex, onTestStart]);
 
     const renderNode = (node: Item, parentPath: string = "", level: number = 0): React.ReactElement => {
         const currentPath = buildPath(parentPath, node.name);
@@ -176,14 +236,16 @@ export function ParticipantPreview({ study }: ParticipantPreviewProps) {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Preview Mode Banner */}
-            <div className="bg-yellow-100 border-b border-yellow-300 px-4 py-2">
-                <div className="max-w-4xl mx-auto">
-                    <p className="text-sm font-medium text-yellow-800">
-                        ⚠️ Preview Mode - Not Collecting Responses
-                    </p>
+            {/* Preview Mode Banner - only show in preview mode */}
+            {isPreview && (
+                <div className="bg-yellow-100 border-b border-yellow-300 px-4 py-2">
+                    <div className="max-w-4xl mx-auto">
+                        <p className="text-sm font-medium text-yellow-800">
+                            ⚠️ Preview Mode - Not Collecting Responses
+                        </p>
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="max-w-4xl mx-auto px-4 py-8">
                 <div className="bg-white rounded-lg shadow-sm p-8">
@@ -279,17 +341,67 @@ export function ParticipantPreview({ study }: ParticipantPreviewProps) {
                                 </div>
                             </div>
 
-                            {/* Navigation */}
-                            <div className="flex justify-between items-center pt-4 border-t">
-                                <div className="text-sm text-gray-500">
-                                    {lastClickedPath ? "Click 'I'd find it here' to continue" : "Navigate the tree to find your answer"}
+                            {/* Confidence Rating */}
+                            {selectedPath && (
+                                <div className="border rounded-lg p-6 bg-gray-50">
+                                    <div className="max-w-2xl mx-auto">
+                                        <Label className="text-base font-medium text-gray-700 mb-4 block text-center">
+                                            How confident are you with your answer?
+                                        </Label>
+                                        <div className="flex justify-center mb-4">
+                                            <RadioGroup
+                                                value={confidence?.toString() || ""}
+                                                onValueChange={(value) => setConfidence(parseInt(value))}
+                                                className="flex gap-4"
+                                            >
+                                                {[1, 2, 3, 4, 5, 6, 7].map((rating) => (
+                                                    <div key={rating} className="flex items-center space-x-2">
+                                                        <RadioGroupItem value={rating.toString()} id={`confidence-${rating}`} />
+                                                        <Label htmlFor={`confidence-${rating}`} className="cursor-pointer">
+                                                            {rating}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </RadioGroup>
+                                        </div>
+                                        <p className="text-xs text-gray-500 text-center mb-4">
+                                            1 = Not confident, 7 = Very confident
+                                        </p>
+                                        <div className="flex justify-center">
+                                            <Button
+                                                onClick={handleSubmitConfidence}
+                                                disabled={!confidence}
+                                                size="lg"
+                                                className="min-w-[120px]"
+                                            >
+                                                Submit
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* Navigation */}
+                            {!selectedPath && (
+                                <div className="flex justify-between items-center pt-4 border-t">
+                                    <div className="text-sm text-gray-500">
+                                        {lastClickedPath 
+                                            ? "Click 'I'd find it here' to continue" 
+                                            : "Navigate the tree to find your answer"}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {phase === "completed" && (
                         <div className="space-y-6">
+                            {isSubmitting && (
+                                <div className="flex items-center justify-center gap-2 text-blue-600 mb-4">
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    <p className="text-sm">Submitting your results...</p>
+                                </div>
+                            )}
                             <div className="prose max-w-none whitespace-pre-wrap text-gray-700">
                                 {study.settings.completedMessage.split('\n').map((line, i) => {
                                     if (line.startsWith('# ')) {

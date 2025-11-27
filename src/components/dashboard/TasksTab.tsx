@@ -339,13 +339,13 @@ export function TasksTab({ data }: TasksTabProps) {
                                                         <tr key={i} className="border-b last:border-0">
                                                             <td className="py-3">
                                                                 <div className="font-medium">
-                                                                    {rating.value === 7 ? "Strongly Agree" :
-                                                                        rating.value === 6 ? "Moderately Agree" :
-                                                                            rating.value === 5 ? "Slightly Agree" :
+                                                                    {rating.value === 7 ? "Very Confident" :
+                                                                        rating.value === 6 ? "Confident" :
+                                                                            rating.value === 5 ? "Somewhat Confident" :
                                                                                 rating.value === 4 ? "Neutral" :
-                                                                                    rating.value === 3 ? "Slightly Disagree" :
-                                                                                        rating.value === 2 ? "Moderately Disagree" :
-                                                                                            "Strongly Disagree"}
+                                                                                    rating.value === 3 ? "Somewhat Not Confident" :
+                                                                                        rating.value === 2 ? "Not Confident" :
+                                                                                            "Not Confident At All"}
                                                                 </div>
                                                             </td>
                                                             <td className="py-3">
