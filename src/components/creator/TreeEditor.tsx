@@ -27,12 +27,20 @@ export function TreeEditor({ tree, onChange }: TreeEditorProps) {
         return treeNodesToText(tree);
     }, [tree]);
 
-    // Update textarea when tree changes (unless user is actively editing)
+    // Update textarea when tree changes (unless user is actively editing or has unsaved changes)
     useEffect(() => {
+        // Only update from tree if:
+        // 1. User is not currently editing
+        // 2. The tree text actually changed
+        // 3. The textarea is empty (initial state) or matches the old tree (to avoid overwriting user input)
         if (!isEditingText && currentTreeText !== treeText) {
-            setTreeText(currentTreeText);
+            // Only update if textarea is empty or if it matches the previous tree state
+            // This prevents clearing user input when they click outside
+            if (treeText === "" || treeText === currentTreeText) {
+                setTreeText(currentTreeText);
+            }
         }
-    }, [currentTreeText, isEditingText]);
+    }, [currentTreeText, isEditingText, treeText]);
 
     // Convert Item[] (from parser) to TreeNode[] (for study config)
     const convertItemsToTreeNodes = (items: Item[]): TreeNode[] => {
@@ -68,6 +76,11 @@ export function TreeEditor({ tree, onChange }: TreeEditorProps) {
             onChange(treeNodes);
             setParseError(null);
             setIsEditingText(false);
+            
+            // Update treeText to match the successfully parsed tree
+            // This ensures the textarea shows the normalized version
+            const normalizedText = treeNodesToText(treeNodes);
+            setTreeText(normalizedText);
 
             // Expand all nodes
             const allNodeIds = getAllNodeIds(treeNodes);
@@ -251,7 +264,11 @@ export function TreeEditor({ tree, onChange }: TreeEditorProps) {
                         setIsEditingText(true);
                         setParseError(null);
                     }}
-                    onBlur={() => setIsEditingText(false)}
+                    onBlur={() => {
+                        // Don't immediately reset isEditingText on blur
+                        // Keep it true so the text doesn't get cleared
+                        // It will be reset when Update Tree Structure is clicked
+                    }}
                     placeholder="Enter your tree structure here (comma or space-indented format)..."
                     className="min-h-[200px] font-mono text-sm mb-2"
                 />
