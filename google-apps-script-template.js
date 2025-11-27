@@ -97,7 +97,10 @@ function doPost(e) {
     let result;
     switch (action) {
       case 'appendRow':
-        result = handleAppendRow(requestData.data);
+        result = handleAppendRow({
+          data: requestData.data,
+          studyId: requestData.studyId
+        });
         break;
       case 'saveConfig':
         result = handleSaveConfig(requestData.studyId, requestData.config);
@@ -130,8 +133,22 @@ function doPost(e) {
 /**
  * Handle appending a participant result row
  */
-function handleAppendRow(rowData) {
+function handleAppendRow(requestData) {
   try {
+    const rowData = requestData.data;
+    const studyId = requestData.studyId;
+    
+    // Check study status BEFORE allowing submission (server-side validation)
+    if (studyId) {
+      const statusResult = handleCheckStatus(studyId);
+      if (statusResult.status === 'closed') {
+        return { 
+          success: false, 
+          error: 'This study is currently closed and not accepting new submissions.' 
+        };
+      }
+    }
+    
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
     
     // If sheet doesn't exist, create it

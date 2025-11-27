@@ -60,7 +60,7 @@ export interface StudyConfig {
 
 // Participant result data structures
 // Participant result data structures
-export type PathOutcome = 'direct-success' | 'indirect-success' | 'failure' | 'skip';
+export type PathOutcome = 'direct-success' | 'indirect-success' | 'failure' | 'direct-skip' | 'indirect-skip';
 
 export interface TaskResult {
     taskId: string;

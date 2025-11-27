@@ -58,7 +58,17 @@ export function ParticipantView() {
                     const parsed = JSON.parse(previewStudy);
                     console.log("Found preview study, ID:", parsed.id);
                     if (parsed.id === id) {
-                        // Check status
+                        // Check status FIRST - check in-memory config immediately
+                        if (parsed.accessStatus === 'closed') {
+                            setState({
+                                study: null,
+                                loadingState: 'closed',
+                                errorMessage: 'This study is currently closed and not accepting new participants.',
+                            });
+                            return;
+                        }
+                        
+                        // Then verify with storage adapter
                         try {
                             const adapter = createStorageAdapter(parsed.storage);
                             const statusResult = await adapter.checkStatus(id);
@@ -72,7 +82,16 @@ export function ParticipantView() {
                                 return;
                             }
                         } catch (statusError) {
-                            console.warn("Could not check status, proceeding anyway:", statusError);
+                            console.warn("Could not check status from storage, using in-memory status:", statusError);
+                            // If storage check fails but in-memory says closed, still block
+                            if (parsed.accessStatus === 'closed') {
+                                setState({
+                                    study: null,
+                                    loadingState: 'closed',
+                                    errorMessage: 'This study is currently closed and not accepting new participants.',
+                                });
+                                return;
+                            }
                         }
                         
                         setState({
@@ -97,15 +116,34 @@ export function ParticipantView() {
                     if (parsed.id === id) {
                         console.log("Study ID matches!");
                         
+                        // Check status FIRST - before any other checks
+                        if (parsed.accessStatus === 'closed') {
+                            setState({
+                                study: null,
+                                loadingState: 'closed',
+                                errorMessage: 'This study is currently closed and not accepting new participants.',
+                            });
+                            return;
+                        }
+                        
                         // Check if study is published (for local testing, we'll allow draft studies too)
                         // But show a warning if it's not published
                         if (parsed.status !== 'published') {
                             console.warn("Study is not published, but loading anyway for testing");
                         }
                         
-                        // For local-download or when storage is not configured, use local config directly
+                        // For local-download or when storage is not configured, check status first
                         if (!parsed.storage || parsed.storage.type === 'local-download') {
                             console.log("Using local config (local-download storage)");
+                            // Check status from in-memory config first
+                            if (parsed.accessStatus === 'closed') {
+                                setState({
+                                    study: null,
+                                    loadingState: 'closed',
+                                    errorMessage: 'This study is currently closed and not accepting new participants.',
+                                });
+                                return;
+                            }
                             setState({
                                 study: parsed,
                                 loadingState: 'ready',
@@ -122,10 +160,20 @@ export function ParticipantView() {
                             
                             if (fetchResult.config) {
                                 console.log("Successfully fetched config from storage");
-                                // Check status
+                                // Check status FIRST before allowing access
                                 const statusResult = await adapter.checkStatus(id);
                                 
                                 if (statusResult.status === 'closed') {
+                                    setState({
+                                        study: null,
+                                        loadingState: 'closed',
+                                        errorMessage: 'This study is currently closed and not accepting new participants.',
+                                    });
+                                    return;
+                                }
+                                
+                                // Also check the config's accessStatus as a double-check
+                                if (fetchResult.config.accessStatus === 'closed') {
                                     setState({
                                         study: null,
                                         loadingState: 'closed',
@@ -145,11 +193,27 @@ export function ParticipantView() {
                             }
                         } catch (fetchError) {
                             console.error("Failed to fetch from storage:", fetchError);
-                            // Fall back to local config if fetch fails
+                            // Fall back to local config if fetch fails, but check status first
+                            if (parsed.accessStatus === 'closed') {
+                                setState({
+                                    study: null,
+                                    loadingState: 'closed',
+                                    errorMessage: 'This study is currently closed and not accepting new participants.',
+                                });
+                                return;
+                            }
                         }
                         
-                        // Use local config as fallback
+                        // Use local config as fallback, but check status first
                         console.log("Using local config as fallback");
+                        if (parsed.accessStatus === 'closed') {
+                            setState({
+                                study: null,
+                                loadingState: 'closed',
+                                errorMessage: 'This study is currently closed and not accepting new participants.',
+                            });
+                            return;
+                        }
                         setState({
                             study: parsed,
                             loadingState: 'ready',
@@ -182,10 +246,20 @@ export function ParticipantView() {
                     
                     if (fetchResult.config) {
                         console.log("Successfully fetched config from Google Sheets via webhook parameter");
-                        // Check status
+                        // Check status FIRST before allowing access
                         const statusResult = await adapter.checkStatus(id);
                         
                         if (statusResult.status === 'closed') {
+                            setState({
+                                study: null,
+                                loadingState: 'closed',
+                                errorMessage: 'This study is currently closed and not accepting new participants.',
+                            });
+                            return;
+                        }
+                        
+                        // Also check the config's accessStatus as a double-check
+                        if (fetchResult.config.accessStatus === 'closed') {
                             setState({
                                 study: null,
                                 loadingState: 'closed',
@@ -265,6 +339,13 @@ export function ParticipantView() {
         if (!state.study || isSubmitting) return;
 
         // Check study status before allowing submission
+        // First check the in-memory study config (fast check)
+        if (state.study.accessStatus === 'closed') {
+            alert('This study is currently closed and not accepting new submissions.');
+            return;
+        }
+
+        // Then verify with storage (in case status changed after page load)
         try {
             const adapter = createStorageAdapter(state.study.storage);
             const statusResult = await adapter.checkStatus(state.study.id);
@@ -273,9 +354,17 @@ export function ParticipantView() {
                 alert('This study is currently closed and not accepting new submissions.');
                 return;
             }
+            
+            // If status check returns 'not-found', block submission to be safe
+            if (statusResult.status === 'not-found') {
+                alert('Unable to verify study status. Please refresh the page and try again.');
+                return;
+            }
         } catch (statusError) {
-            console.warn("Could not check study status, proceeding with submission:", statusError);
-            // Continue with submission if status check fails (for backward compatibility)
+            console.error("Failed to check study status:", statusError);
+            // Block submission if we can't verify status (safer approach)
+            alert('Unable to verify study status. Please refresh the page and try again.');
+            return;
         }
 
         setIsSubmitting(true);
@@ -297,35 +386,46 @@ export function ParticipantView() {
                 // Determine outcome based on correct path
                 let outcome: PathOutcome = 'failure';
                 if (taskResult) {
-                    // Normalize selected path (remove leading slash, split into parts)
-                    const selectedPathParts = taskResult.selectedPath.split('/').filter(Boolean);
-                    const correctPaths = task.correctPath || [];
-                    
-                    // Check if selected path matches any correct path
-                    const isCorrect = correctPaths.some(correctPath => {
-                        // correctPath is a string path like "/Online Store/Shop/Categories/Electronics"
-                        const correctParts = correctPath.split('/').filter(Boolean);
-                        // Compare path parts
-                        if (selectedPathParts.length !== correctParts.length) {
-                            return false;
-                        }
-                        return selectedPathParts.every((part, i) => part === correctParts[i]);
-                    });
-                    
-                    if (isCorrect) {
-                        // Determine if direct or indirect success
-                        // Direct: minimal clicks, took the most efficient path
-                        // Indirect: found the right answer but wandered/explored more
+                    // Check if task was skipped (empty selectedPath)
+                    if (!taskResult.selectedPath || taskResult.selectedPath === "") {
+                        // Determine if direct skip (no interaction) or indirect skip (some interaction)
                         const clicks = taskClicks.current.get(index) || 0;
-                        const minClicksNeeded = selectedPathParts.length; // Minimum clicks to reach this depth
-                        // If clicks are close to minimum (within 2-3), it's direct
-                        // Otherwise, it's indirect (wandered but found it)
-                        outcome = clicks <= (minClicksNeeded + 2) ? 'direct-success' : 'indirect-success';
+                        const pathTaken = taskPaths.current.get(index) || [];
+                        // If no clicks and no path taken, it's a direct skip
+                        // If there were clicks or path taken, it's an indirect skip
+                        outcome = (clicks === 0 && pathTaken.length === 0) ? 'direct-skip' : 'indirect-skip';
                     } else {
-                        outcome = 'failure';
+                        // Normalize selected path (remove leading slash, split into parts)
+                        const selectedPathParts = taskResult.selectedPath.split('/').filter(Boolean);
+                        const correctPaths = task.correctPath || [];
+                        
+                        // Check if selected path matches any correct path
+                        const isCorrect = correctPaths.some(correctPath => {
+                            // correctPath is a string path like "/Online Store/Shop/Categories/Electronics"
+                            const correctParts = correctPath.split('/').filter(Boolean);
+                            // Compare path parts
+                            if (selectedPathParts.length !== correctParts.length) {
+                                return false;
+                            }
+                            return selectedPathParts.every((part, i) => part === correctParts[i]);
+                        });
+                        
+                        if (isCorrect) {
+                            // Determine if direct or indirect success
+                            // Direct: minimal clicks, took the most efficient path
+                            // Indirect: found the right answer but wandered/explored more
+                            const clicks = taskClicks.current.get(index) || 0;
+                            const minClicksNeeded = selectedPathParts.length; // Minimum clicks to reach this depth
+                            // If clicks are close to minimum (within 2-3), it's direct
+                            // Otherwise, it's indirect (wandered but found it)
+                            outcome = clicks <= (minClicksNeeded + 2) ? 'direct-success' : 'indirect-success';
+                        } else {
+                            outcome = 'failure';
+                        }
                     }
                 } else {
-                    outcome = 'skip';
+                    // No task result at all - treat as direct skip
+                    outcome = 'direct-skip';
                 }
 
                 return {

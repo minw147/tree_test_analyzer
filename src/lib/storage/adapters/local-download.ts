@@ -32,7 +32,8 @@ export class LocalDownloadAdapter implements StorageAdapter {
                     case 'direct-success': outcomeStr = "Direct Success"; break;
                     case 'indirect-success': outcomeStr = "Indirect Success"; break;
                     case 'failure': outcomeStr = "Failure"; break;
-                    case 'skip': outcomeStr = "Skip"; break;
+                    case 'direct-skip': outcomeStr = "Direct Skip"; break;
+                    case 'indirect-skip': outcomeStr = "Indirect Skip"; break;
                 }
                 row[`Task ${taskNum} Path Outcome`] = outcomeStr;
 

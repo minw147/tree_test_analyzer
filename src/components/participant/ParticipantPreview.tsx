@@ -134,6 +134,38 @@ export function ParticipantPreview({
         }
     };
 
+    const handleSkipTask = () => {
+        // Record skipped task with no selected path
+        const result = {
+            taskIndex: currentTaskIndex,
+            selectedPath: "", // Empty path indicates skip
+            confidence: undefined,
+        };
+        setTaskResults(prev => [...prev, result]);
+        
+        // Call task complete callback if provided (with empty path to indicate skip)
+        if (onTaskComplete) {
+            onTaskComplete(currentTaskIndex, "", undefined);
+        }
+        
+        // Move to next task or complete
+        if (isLastTask) {
+            // All tasks complete - submit results
+            if (onTestComplete) {
+                const allResults = [...taskResults, result];
+                onTestComplete(allResults);
+            }
+            setPhase("completed");
+        } else {
+            setCurrentTaskIndex(currentTaskIndex + 1);
+            setSelectedPath("");
+            setExpandedNodes(new Set());
+            setBreadcrumb([]);
+            setLastClickedPath("");
+            setConfidence(undefined); // Reset confidence for next task
+        }
+    };
+
     const handleNext = () => {
         if (phase === "welcome") {
             setPhase("instructions");
@@ -389,6 +421,13 @@ export function ParticipantPreview({
                                             ? "Click 'I'd find it here' to continue" 
                                             : "Navigate the tree to find your answer"}
                                     </div>
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleSkipTask}
+                                        className="text-gray-600 hover:text-gray-800"
+                                    >
+                                        Skip Task
+                                    </Button>
                                 </div>
                             )}
                         </div>
