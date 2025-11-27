@@ -24,6 +24,33 @@ const SHEET_NAME = 'Results'; // Change this if you want to use a different shee
 const CONFIG_SHEET_NAME = 'StudyConfigs'; // Sheet for storing study configurations
 
 /**
+ * Handle CORS preflight requests (OPTIONS)
+ */
+function doOptions() {
+  return ContentService.createTextOutput('')
+    .setMimeType(ContentService.MimeType.TEXT)
+    .setHeaders({
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '3600'
+    });
+}
+
+/**
+ * Helper function to create CORS-enabled response
+ */
+function createCorsResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeaders({
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    });
+}
+
+/**
  * Main doPost function - handles incoming webhook requests
  */
 function doPost(e) {
@@ -31,30 +58,36 @@ function doPost(e) {
     const requestData = JSON.parse(e.postData.contents);
     const action = requestData.action;
 
+    let result;
     switch (action) {
       case 'appendRow':
-        return handleAppendRow(requestData.data);
+        result = handleAppendRow(requestData.data);
+        break;
       case 'saveConfig':
-        return handleSaveConfig(requestData.studyId, requestData.config);
+        result = handleSaveConfig(requestData.studyId, requestData.config);
+        break;
       case 'checkStatus':
-        return handleCheckStatus(requestData.studyId);
+        result = handleCheckStatus(requestData.studyId);
+        break;
       case 'updateStatus':
-        return handleUpdateStatus(requestData.studyId, requestData.status);
+        result = handleUpdateStatus(requestData.studyId, requestData.status);
+        break;
       case 'fetchConfig':
-        return handleFetchConfig(requestData.studyId);
+        result = handleFetchConfig(requestData.studyId);
+        break;
       case 'test':
-        return ContentService.createTextOutput(JSON.stringify({ success: true, message: 'Connection successful' }))
-          .setMimeType(ContentService.MimeType.JSON);
+        result = { success: true, message: 'Connection successful' };
+        break;
       default:
-        return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Unknown action' }))
-          .setMimeType(ContentService.MimeType.JSON);
+        result = { success: false, error: 'Unknown action' };
     }
+    
+    return createCorsResponse(result);
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ 
+    return createCorsResponse({ 
       success: false, 
       error: error.toString() 
-    }))
-    .setMimeType(ContentService.MimeType.JSON);
+    });
   }
 }
 
@@ -84,14 +117,12 @@ function handleAppendRow(rowData) {
     // Append the row
     sheet.appendRow(row);
 
-    return ContentService.createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return { success: true };
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ 
+    return { 
       success: false, 
       error: error.toString() 
-    }))
-    .setMimeType(ContentService.MimeType.JSON);
+    };
   }
 }
 
@@ -190,14 +221,12 @@ function handleSaveConfig(studyId, config) {
       configSheet.appendRow([studyId, JSON.stringify(config)]);
     }
 
-    return ContentService.createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return { success: true };
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ 
+    return { 
       success: false, 
       error: error.toString() 
-    }))
-    .setMimeType(ContentService.MimeType.JSON);
+    };
   }
 }
 
@@ -211,8 +240,7 @@ function handleCheckStatus(studyId) {
     const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
     
     if (!configSheet) {
-      return ContentService.createTextOutput(JSON.stringify({ status: 'not-found' }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return { status: 'not-found' };
     }
 
     const data = configSheet.getDataRange().getValues();
@@ -220,19 +248,16 @@ function handleCheckStatus(studyId) {
       if (data[i][0] === studyId) {
         // Study exists - default to active
         // You could extend this to read status from a separate column
-        return ContentService.createTextOutput(JSON.stringify({ status: 'active' }))
-          .setMimeType(ContentService.MimeType.JSON);
+        return { status: 'active' };
       }
     }
 
-    return ContentService.createTextOutput(JSON.stringify({ status: 'not-found' }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return { status: 'not-found' };
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ 
+    return { 
       status: 'not-found', 
       error: error.toString() 
-    }))
-    .setMimeType(ContentService.MimeType.JSON);
+    };
   }
 }
 
@@ -243,14 +268,12 @@ function handleUpdateStatus(studyId, status) {
   try {
     // For now, we'll just acknowledge the update
     // In a full implementation, you might store status in the config sheet
-    return ContentService.createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return { success: true };
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ 
+    return { 
       success: false, 
       error: error.toString() 
-    }))
-    .setMimeType(ContentService.MimeType.JSON);
+    };
   }
 }
 
@@ -262,27 +285,23 @@ function handleFetchConfig(studyId) {
     const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
     
     if (!configSheet) {
-      return ContentService.createTextOutput(JSON.stringify({ config: null, error: 'Study not found' }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return { config: null, error: 'Study not found' };
     }
 
     const data = configSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === studyId) {
         const config = JSON.parse(data[i][1]);
-        return ContentService.createTextOutput(JSON.stringify({ config: config }))
-          .setMimeType(ContentService.MimeType.JSON);
+        return { config: config };
       }
     }
 
-    return ContentService.createTextOutput(JSON.stringify({ config: null, error: 'Study not found' }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return { config: null, error: 'Study not found' };
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ 
+    return { 
       config: null, 
       error: error.toString() 
-    }))
-    .setMimeType(ContentService.MimeType.JSON);
+    };
   }
 }
 
