@@ -11,7 +11,7 @@
  * 4. Paste this entire script
  * 5. Click Save (Ctrl+S or Cmd+S)
  * 6. Click Deploy → New deployment
- * 7. Select type: Web app
+ * 7. Click the gear icon next to "Select type" and choose "Web app"
  * 8. Set Execute as: Me
  * 9. Set Who has access: Anyone
  * 10. Click Deploy
@@ -24,30 +24,11 @@ const SHEET_NAME = 'Results'; // Change this if you want to use a different shee
 const CONFIG_SHEET_NAME = 'StudyConfigs'; // Sheet for storing study configurations
 
 /**
- * Handle CORS preflight requests (OPTIONS)
+ * Helper function to create JSON response
  */
-function doOptions() {
-  return ContentService.createTextOutput('')
-    .setMimeType(ContentService.MimeType.TEXT)
-    .setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Max-Age': '3600'
-    });
-}
-
-/**
- * Helper function to create CORS-enabled response
- */
-function createCorsResponse(data) {
+function createResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
@@ -82,9 +63,9 @@ function doPost(e) {
         result = { success: false, error: 'Unknown action' };
     }
     
-    return createCorsResponse(result);
+    return createResponse(result);
   } catch (error) {
-    return createCorsResponse({ 
+    return createResponse({ 
       success: false, 
       error: error.toString() 
     });
