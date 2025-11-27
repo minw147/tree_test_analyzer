@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Plus, BarChart3, FileEdit, Trash2, Clock, ArrowRight, HelpCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,22 +11,25 @@ const STORAGE_KEY_ANALYZER_STUDIES = "tree-test-analyzer-studies";
 
 export function Landing() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [savedStudy, setSavedStudy] = useState<StudyConfig | null>(null);
     const [savedAnalyses, setSavedAnalyses] = useState<UploadedData[]>([]);
     const [showStorageTooltip, setShowStorageTooltip] = useState(false);
 
-    useEffect(() => {
-        // Load saved study draft
+    const loadStudy = () => {
         try {
             const studyJson = localStorage.getItem(STORAGE_KEY_STUDY);
             if (studyJson) {
                 setSavedStudy(JSON.parse(studyJson));
+            } else {
+                setSavedStudy(null);
             }
         } catch (e) {
             console.error("Failed to load saved study", e);
         }
+    };
 
-        // Load saved analysis studies
+    const loadAnalyses = () => {
         try {
             const analysesJson = localStorage.getItem(STORAGE_KEY_ANALYZER_STUDIES);
             if (analysesJson) {
@@ -35,7 +38,42 @@ export function Landing() {
         } catch (e) {
             console.error("Failed to load saved analyses", e);
         }
+    };
+
+    useEffect(() => {
+        loadStudy();
+        loadAnalyses();
+
+        // Listen for storage changes to update when study status changes
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === STORAGE_KEY_STUDY) {
+                loadStudy();
+            }
+            if (e.key === STORAGE_KEY_ANALYZER_STUDIES) {
+                loadAnalyses();
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+
+        // Also check on focus in case changes were made in another tab
+        const handleFocus = () => {
+            loadStudy();
+            loadAnalyses();
+        };
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('focus', handleFocus);
+        };
     }, []);
+
+    // Refresh when navigating back to this page
+    useEffect(() => {
+        loadStudy();
+        loadAnalyses();
+    }, [location.pathname]);
 
     const handleDeleteStudy = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -122,56 +160,94 @@ export function Landing() {
                     ) : (
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {/* Saved Draft Study */}
-                            {savedStudy && (
-                                <Card className="group hover:shadow-md transition-shadow relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-                                    <CardHeader className="pb-3">
-                                        <div className="flex justify-between items-start">
-                                            <div className="space-y-1">
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                                    Draft
-                                                </span>
-                                                <CardTitle className="text-lg font-bold text-gray-900">
-                                                    {savedStudy.name || "Untitled Study"}
-                                                </CardTitle>
-                                                <CardDescription>
-                                                    Created {new Date(savedStudy.createdAt).toLocaleDateString()}
-                                                </CardDescription>
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-4">
-                                            <div className="text-sm text-gray-600">
-                                                <div className="flex items-center gap-2">
-                                                    <Clock className="w-4 h-4" />
-                                                    <span>Last updated {new Date(savedStudy.updatedAt).toLocaleDateString()}</span>
+                            {savedStudy && (() => {
+                                // Determine display status - show Closed if closed, otherwise Published or Draft
+                                const displayStatus = savedStudy.accessStatus === 'closed' 
+                                    ? 'closed' 
+                                    : savedStudy.status === 'published' 
+                                        ? 'published' 
+                                        : 'draft';
+                                
+                                const statusConfig = {
+                                    draft: { 
+                                        label: 'Draft', 
+                                        bg: 'bg-gray-100', 
+                                        text: 'text-gray-800',
+                                        border: 'bg-gray-500'
+                                    },
+                                    published: { 
+                                        label: 'Published', 
+                                        bg: 'bg-green-100', 
+                                        text: 'text-green-800',
+                                        border: 'bg-green-500'
+                                    },
+                                    closed: { 
+                                        label: 'Closed', 
+                                        bg: 'bg-red-100', 
+                                        text: 'text-red-800',
+                                        border: 'bg-red-500'
+                                    }
+                                };
+                                
+                                const config = statusConfig[displayStatus];
+                                
+                                return (
+                                    <Card className="group hover:shadow-md transition-shadow relative overflow-hidden">
+                                        <div className={`absolute top-0 left-0 w-1 h-full ${config.border}`} />
+                                        <CardHeader className="pb-3">
+                                            <div className="flex justify-between items-start">
+                                                <div className="space-y-1">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${config.bg} ${config.text}`}>
+                                                        {config.label}
+                                                    </span>
+                                                    <CardTitle className="text-lg font-bold text-gray-900">
+                                                        {savedStudy.name || "Untitled Study"}
+                                                    </CardTitle>
+                                                    <CardDescription className="text-xs space-y-0.5">
+                                                        <div>Created {new Date(savedStudy.createdAt).toLocaleDateString()}</div>
+                                                        {savedStudy.publishedAt && (
+                                                            <div>Published {new Date(savedStudy.publishedAt).toLocaleDateString()}</div>
+                                                        )}
+                                                        {savedStudy.closedAt && (
+                                                            <div>Closed {new Date(savedStudy.closedAt).toLocaleDateString()}</div>
+                                                        )}
+                                                    </CardDescription>
                                                 </div>
                                             </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="space-y-4">
+                                                <div className="text-sm text-gray-600">
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="w-4 h-4" />
+                                                        <span>Last updated {new Date(savedStudy.updatedAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                </div>
 
-                                            <div className="flex items-center gap-2 pt-2">
-                                                <Button
-                                                    variant="default"
-                                                    className="flex-1"
-                                                    onClick={() => navigate("/create")}
-                                                >
-                                                    <FileEdit className="w-4 h-4 mr-2" />
-                                                    Continue Editing
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="text-gray-400 hover:text-red-600"
-                                                    onClick={handleDeleteStudy}
-                                                    title="Delete Draft"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
+                                                <div className="flex items-center gap-2 pt-2">
+                                                    <Button
+                                                        variant="default"
+                                                        className="flex-1"
+                                                        onClick={() => navigate("/create")}
+                                                    >
+                                                        <FileEdit className="w-4 h-4 mr-2" />
+                                                        {displayStatus === 'draft' ? 'Continue Editing' : 'Edit Study'}
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-gray-400 hover:text-red-600"
+                                                        onClick={handleDeleteStudy}
+                                                        title="Delete Study"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })()}
 
                             {/* Saved Analyses */}
                             {savedAnalyses.map((analysis) => (

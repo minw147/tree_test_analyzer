@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import type { TreeNode } from "@/lib/types/study";
 import type { Item } from "@/lib/types";
 import { generateId } from "@/lib/utils/id-generator";
 import { parseTreeFromString } from "@/lib/data-parser";
+import { treeNodesToText } from "@/lib/study-exporter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +18,21 @@ export function TreeEditor({ tree, onChange }: TreeEditorProps) {
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
     const [treeText, setTreeText] = useState("");
     const [parseError, setParseError] = useState<string | null>(null);
+    const [isEditingText, setIsEditingText] = useState(false);
     const manualSectionRef = useRef<HTMLDivElement>(null);
+
+    // Convert current tree to text format
+    const currentTreeText = useMemo(() => {
+        if (tree.length === 0) return "";
+        return treeNodesToText(tree);
+    }, [tree]);
+
+    // Update textarea when tree changes (unless user is actively editing)
+    useEffect(() => {
+        if (!isEditingText && currentTreeText !== treeText) {
+            setTreeText(currentTreeText);
+        }
+    }, [currentTreeText, isEditingText]);
 
     // Convert Item[] (from parser) to TreeNode[] (for study config)
     const convertItemsToTreeNodes = (items: Item[]): TreeNode[] => {
@@ -41,7 +56,7 @@ export function TreeEditor({ tree, onChange }: TreeEditorProps) {
         return ids;
     };
 
-    const handleCreateFromText = () => {
+    const handleUpdateFromText = () => {
         if (!treeText.trim()) {
             setParseError("Please enter a tree structure.");
             return;
@@ -51,17 +66,12 @@ export function TreeEditor({ tree, onChange }: TreeEditorProps) {
             const parsedItems = parseTreeFromString(treeText);
             const treeNodes = convertItemsToTreeNodes(parsedItems);
             onChange(treeNodes);
-            setTreeText("");
             setParseError(null);
+            setIsEditingText(false);
 
             // Expand all nodes
             const allNodeIds = getAllNodeIds(treeNodes);
             setExpandedNodes(new Set(allNodeIds));
-
-            // Scroll to manual section after a brief delay to ensure DOM update
-            setTimeout(() => {
-                manualSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
         } catch (error) {
             setParseError("Failed to parse tree structure. Please check the format.");
             console.error(error);
@@ -229,16 +239,21 @@ export function TreeEditor({ tree, onChange }: TreeEditorProps) {
         <div className="space-y-6">
             {/* Text-Based Input Section */}
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Option 1: Paste Tree Structure</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Tree Structure Editor</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                    Paste your tree structure in comma or space-indented format to quickly create the entire tree.
+                    Edit your tree structure in text format. Changes are automatically reflected in the tree below.
                 </p>
 
                 <Textarea
                     value={treeText}
-                    onChange={(e) => setTreeText(e.target.value)}
-                    placeholder="Paste your tree structure here (comma or space-indented format)..."
-                    className="min-h-[120px] font-mono text-sm mb-2"
+                    onChange={(e) => {
+                        setTreeText(e.target.value);
+                        setIsEditingText(true);
+                        setParseError(null);
+                    }}
+                    onBlur={() => setIsEditingText(false)}
+                    placeholder="Enter your tree structure here (comma or space-indented format)..."
+                    className="min-h-[200px] font-mono text-sm mb-2"
                 />
 
                 <div className="text-xs text-gray-600 mb-4 space-y-3">
@@ -262,9 +277,9 @@ export function TreeEditor({ tree, onChange }: TreeEditorProps) {
                     </div>
                 )}
 
-                <Button onClick={handleCreateFromText} className="w-full sm:w-auto">
+                <Button onClick={handleUpdateFromText} className="w-full sm:w-auto">
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Tree Structure
+                    Update Tree Structure
                 </Button>
             </div>
 

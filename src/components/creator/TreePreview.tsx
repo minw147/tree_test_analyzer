@@ -1,34 +1,25 @@
 import { useState } from "react";
 import { ChevronRight, ChevronDown, Folder, File, Home } from "lucide-react";
 import type { TreeNode } from "@/lib/types/study";
-import type { Item } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
 interface TreePreviewProps {
     tree: TreeNode[];
 }
 
-// Convert TreeNode[] (from study) to Item[] (for preview)
-const convertTreeNodesToItems = (nodes: TreeNode[]): Item[] => {
-    return nodes.map(node => ({
-        name: node.name,
-        link: node.link,
-        children: node.children ? convertTreeNodesToItems(node.children) : []
-    }));
-};
-
+// TreeNode is used directly for preview
 export function TreePreview({ tree }: TreePreviewProps) {
     const [expandedPath, setExpandedPath] = useState<string>("");
     const [selectedPath, setSelectedPath] = useState<string>("");
     const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
 
-    const items = convertTreeNodesToItems(tree);
+
 
     const buildPath = (parentPath: string, nodeName: string): string => {
         return parentPath ? `${parentPath}/${nodeName}` : `/${nodeName}`;
     };
 
-    const handleNodeClick = (path: string, nodeName: string, hasChildren: boolean) => {
+    const handleNodeClick = (path: string, hasChildren: boolean) => {
         if (hasChildren) {
             // Only one branch can be open at a time (usabilitree behavior)
             setExpandedPath(path);
@@ -57,7 +48,7 @@ export function TreePreview({ tree }: TreePreviewProps) {
         console.log("Selected path:", path);
     };
 
-    const renderNode = (node: Item, parentPath: string = "", level: number = 0): React.ReactElement => {
+    const renderNode = (node: TreeNode, parentPath: string = "", level: number = 0): React.ReactElement => {
         const currentPath = buildPath(parentPath, node.name);
         const hasChildren = node.children && node.children.length > 0;
         const isExpanded = expandedPath === currentPath;
@@ -67,15 +58,14 @@ export function TreePreview({ tree }: TreePreviewProps) {
         return (
             <div key={currentPath}>
                 <div
-                    className={`flex items-center gap-2 py-2 px-3 rounded transition-colors ${
-                        isSelected
-                            ? "bg-blue-100 text-blue-700 font-medium"
-                            : isExpanded
+                    className={`flex items-center gap-2 py-2 px-3 rounded transition-colors ${isSelected
+                        ? "bg-blue-100 text-blue-700 font-medium"
+                        : isExpanded
                             ? "bg-gray-50"
                             : "hover:bg-gray-50 cursor-pointer"
-                    }`}
+                        }`}
                     style={{ paddingLeft: `${level * 20 + 8}px` }}
-                    onClick={() => handleNodeClick(currentPath, node.name, hasChildren)}
+                    onClick={() => handleNodeClick(currentPath, !!hasChildren)}
                 >
                     {hasChildren ? (
                         <>
@@ -160,7 +150,7 @@ export function TreePreview({ tree }: TreePreviewProps) {
             {/* Interactive Tree */}
             <div className="border rounded-lg p-4 bg-white max-h-[600px] overflow-y-auto">
                 <div className="space-y-1">
-                    {items.map((node) => renderNode(node))}
+                    {tree.map((node) => renderNode(node))}
                 </div>
             </div>
 

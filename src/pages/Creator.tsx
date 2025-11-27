@@ -5,9 +5,14 @@ import { generateStudyId } from "@/lib/utils/id-generator";
 import { TreeEditor } from "@/components/creator/TreeEditor";
 import { TaskEditor } from "@/components/creator/TaskEditor";
 import { SettingsEditor } from "@/components/creator/SettingsEditor";
+import { StorageEditor } from "@/components/creator/StorageEditor";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { exportStudyConfig } from "@/lib/study-exporter";
+import { Download, Globe, CheckCircle2, XCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { createStorageAdapter } from "@/lib/storage/factory";
 
 type TabType = "tree" | "tasks" | "settings" | "preview" | "storage" | "export";
 
@@ -28,6 +33,8 @@ const getDefaultStudy = (): StudyConfig => ({
         instructions: "# Instructions\n\nRead each task carefully and navigate through the tree to find where you think the answer would be located.",
         completedMessage: "# Thank you!\n\nYour responses have been recorded.",
     },
+    status: "draft",
+    accessStatus: "active",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
 });
@@ -41,6 +48,8 @@ const loadStudyFromStorage = (): StudyConfig => {
             return {
                 ...getDefaultStudy(),
                 ...parsed,
+                status: parsed.status || "draft",
+                accessStatus: parsed.accessStatus || "active",
                 createdAt: parsed.createdAt || new Date().toISOString(),
                 updatedAt: parsed.updatedAt || new Date().toISOString(),
             };
@@ -56,6 +65,8 @@ export function Creator() {
     const [editingName, setEditingName] = useState(false);
     const [editingCreator, setEditingCreator] = useState(false);
     const [study, setStudy] = useState<StudyConfig>(loadStudyFromStorage());
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     // Save to localStorage whenever study changes
     useEffect(() => {
@@ -72,7 +83,7 @@ export function Creator() {
         { id: "settings" as TabType, name: "Settings", icon: Settings },
         { id: "preview" as TabType, name: "Preview", icon: Eye },
         { id: "storage" as TabType, name: "Storage", icon: Database },
-        { id: "export" as TabType, name: "Export", icon: Share2 },
+        { id: "export" as TabType, name: "Launch Study", icon: Share2 },
     ];
 
     const handleOpenPreview = () => {
@@ -120,6 +131,7 @@ export function Creator() {
                                         </h1>
                                     )}
                                 </div>
+                                <div className="flex items-center gap-3">
                                 {editingCreator ? (
                                     <Input
                                         value={study.creator || ""}
@@ -132,20 +144,60 @@ export function Creator() {
                                                 setEditingCreator(false);
                                             }
                                         }}
-                                        placeholder="Enter creator name..."
-                                        className="text-sm text-gray-500 h-7 px-2 py-1"
+                                            className="text-sm text-gray-600 h-6 px-2 py-1"
+                                            placeholder="Study Creator"
                                         autoFocus
                                     />
                                 ) : (
                                     <p
-                                        className="text-sm text-gray-500 cursor-pointer hover:text-blue-600 transition-colors flex items-center gap-2 group w-fit"
+                                            className="text-sm text-gray-600 cursor-pointer hover:text-blue-600 transition-colors"
                                         onClick={() => setEditingCreator(true)}
                                         title="Click to edit creator name"
                                     >
                                         {study.creator || "Study Creator"}
-                                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                     </p>
                                 )}
+                                    {/* Status badge - single badge following landing page logic */}
+                                    {(() => {
+                                        // Determine display status - show Closed if closed, otherwise Published or Draft
+                                        const displayStatus = study.accessStatus === 'closed' 
+                                            ? 'closed' 
+                                            : study.status === 'published' 
+                                                ? 'published' 
+                                                : 'draft';
+                                        
+                                        const statusConfig = {
+                                            draft: { 
+                                                label: 'Draft', 
+                                                bg: 'bg-gray-100', 
+                                                text: 'text-gray-800',
+                                                icon: AlertCircle
+                                            },
+                                            published: { 
+                                                label: 'Published', 
+                                                bg: 'bg-green-100', 
+                                                text: 'text-green-800',
+                                                icon: CheckCircle2
+                                            },
+                                            closed: { 
+                                                label: 'Closed', 
+                                                bg: 'bg-red-100', 
+                                                text: 'text-red-800',
+                                                icon: XCircle
+                                            }
+                                        };
+                                        
+                                        const config = statusConfig[displayStatus];
+                                        const Icon = config.icon;
+                                        
+                                        return (
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium ${config.bg} ${config.text}`}>
+                                                <Icon className="h-3.5 w-3.5" />
+                                                {config.label}
+                                            </span>
+                                        );
+                                    })()}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -241,25 +293,371 @@ export function Creator() {
 
                         {activeTab === "storage" && (
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Data Storage</h2>
-                                <p className="text-gray-600 mb-6">
-                                    Configure where participant responses will be stored.
-                                </p>
-                                <div className="text-center py-12 text-gray-500">
-                                    Storage configuration coming soon...
-                                </div>
+                                <StorageEditor
+                                    config={study.storage}
+                                    onChange={(storage) => setStudy({ ...study, storage, updatedAt: new Date().toISOString() })}
+                                />
                             </div>
                         )}
 
                         {activeTab === "export" && (
+                            <div className="space-y-6">
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Export Study</h2>
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Launch Study</h2>
                                 <p className="text-gray-600 mb-6">
-                                    Generate a shareable link or download your study configuration.
-                                </p>
-                                <div className="text-center py-12 text-gray-500">
-                                    Export functionality coming soon...
+                                        Publish your study and generate a shareable link, or export your study configuration.
+                                    </p>
                                 </div>
+
+                                {/* Study Status Section */}
+                                <Card>
+                                    <CardContent className="pt-6">
+                                        {saveError && (
+                                            <Alert variant="destructive" className="mb-4">
+                                                <AlertCircle className="h-4 w-4" />
+                                                <AlertTitle>Error</AlertTitle>
+                                                <AlertDescription>{saveError}</AlertDescription>
+                                            </Alert>
+                                        )}
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                                        Study Status
+                                                    </h3>
+                                                    <div className="flex items-center gap-3 mt-2">
+                                                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
+                                                            study.status === 'published' 
+                                                                ? 'bg-green-100 text-green-800' 
+                                                                : 'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                            {study.status === 'published' ? (
+                                                                <>
+                                                                    <CheckCircle2 className="h-4 w-4" />
+                                                                    Published
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <AlertCircle className="h-4 w-4" />
+                                                                    Draft
+                                                                </>
+                                                            )}
+                                                        </span>
+                                                        {study.status === 'published' && (
+                                                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
+                                                                study.accessStatus === 'active'
+                                                                    ? 'bg-blue-100 text-blue-800'
+                                                                    : 'bg-red-100 text-red-800'
+                                                            }`}>
+                                                                {study.accessStatus === 'active' ? (
+                                                                    <>
+                                                                        <Globe className="h-4 w-4" />
+                                                                        Active
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <XCircle className="h-4 w-4" />
+                                                                        Closed
+                                                                    </>
+                                                                )}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {study.status === 'published' && (
+                                                        <div className="text-xs text-gray-500 mt-2">
+                                                            {study.publishedAt && (
+                                                                <span>Published: {new Date(study.publishedAt).toLocaleDateString()}</span>
+                                                            )}
+                                                            {study.publishedAt && study.closedAt && (
+                                                                <span className="mx-2">•</span>
+                                                            )}
+                                                            {study.closedAt && (
+                                                                <span>Closed: {new Date(study.closedAt).toLocaleDateString()}</span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex gap-2 items-start">
+                                                    {study.status === 'draft' ? (
+                                                        <Button
+                                                            onClick={async () => {
+                                                                // Validation before publishing
+                                                                if (study.tree.length === 0) {
+                                                                    alert("Please add a tree structure before publishing.");
+                                                                    return;
+                                                                }
+                                                                if (study.tasks.length === 0) {
+                                                                    alert("Please add at least one task before publishing.");
+                                                                    return;
+                                                                }
+                                                                if (study.storage.type === 'custom-api' && !study.storage.endpointUrl) {
+                                                                    alert("Please configure your Custom API endpoint URL in the Storage tab.");
+                                                                    return;
+                                                                }
+
+                                                                setIsSaving(true);
+                                                                setSaveError(null);
+
+                                                                try {
+                                                                    // Prepare updated study config
+                                                                    const updatedConfig = {
+                                                                        ...study,
+                                                                        status: 'published' as const,
+                                                                        accessStatus: 'active' as const, // Newly published studies should be active
+                                                                        publishedAt: new Date().toISOString(),
+                                                                        updatedAt: new Date().toISOString(),
+                                                                    };
+
+                                                                    // Save to storage if not local-download
+                                                                    if (study.storage.type !== 'local-download') {
+                                                                        const adapter = createStorageAdapter(study.storage);
+                                                                        const result = await adapter.saveConfig(updatedConfig);
+
+                                                                        if (!result.success) {
+                                                                            setSaveError(result.error || "Failed to publish study. Please check your storage configuration.");
+                                                                            setIsSaving(false);
+                                                                            return;
+                                                                        }
+                                                                    }
+
+                                                                    // Update local state
+                                                                    setStudy(updatedConfig);
+                                                                } catch (error) {
+                                                                    setSaveError(error instanceof Error ? error.message : "Failed to publish study");
+                                                                } finally {
+                                                                    setIsSaving(false);
+                                                                }
+                                                            }}
+                                                            className="gap-2 whitespace-nowrap"
+                                                            disabled={isSaving}
+                                                        >
+                                                            {isSaving ? (
+                                                                <>
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                    Publishing...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <CheckCircle2 className="h-4 w-4" />
+                                                                    Publish Study
+                                                                </>
+                                                            )}
+                                                        </Button>
+                                                    ) : (
+                                                        <>
+                                                            <Button
+                                                                variant="outline"
+                                                                onClick={async () => {
+                                                                    setIsSaving(true);
+                                                                    setSaveError(null);
+
+                                                                    try {
+                                                                        // Save to storage if not local-download
+                                                                        if (study.storage.type !== 'local-download') {
+                                                                            const adapter = createStorageAdapter(study.storage);
+                                                                            const result = await adapter.saveConfig({
+                                                                                ...study,
+                                                                                status: 'draft' as const,
+                                                                                publishedAt: undefined,
+                                                                                closedAt: undefined,
+                                                                                updatedAt: new Date().toISOString(),
+                                                                            });
+
+                                                                            if (!result.success) {
+                                                                                setSaveError(result.error || "Failed to unpublish study.");
+                                                                                setIsSaving(false);
+                                                                                return;
+                                                                            }
+                                                                        }
+
+                                                                        const updated = {
+                                                                            ...study,
+                                                                            status: 'draft' as const,
+                                                                            publishedAt: undefined, // Clear publish date when unpublished
+                                                                            closedAt: undefined, // Clear closed date when unpublished
+                                                                            updatedAt: new Date().toISOString(),
+                                                                        };
+                                                                        setStudy(updated);
+                                                                    } catch (error) {
+                                                                        setSaveError(error instanceof Error ? error.message : "Failed to unpublish study");
+                                                                    } finally {
+                                                                        setIsSaving(false);
+                                                                    }
+                                                                }}
+                                                                className="whitespace-nowrap"
+                                                                disabled={isSaving}
+                                                            >
+                                                                {isSaving ? (
+                                                                    <>
+                                                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                                        Saving...
+                                                                    </>
+                                                                ) : (
+                                                                    'Unpublish'
+                                                                )}
+                                                            </Button>
+                                                            <div className="w-[140px]">
+                                                                {study.accessStatus === 'active' ? (
+                                                                    <Button
+                                                                        variant="destructive"
+                                                                        onClick={async () => {
+                                                                            setIsSaving(true);
+                                                                            setSaveError(null);
+
+                                                                            try {
+                                                                                // Update status in storage if not local-download
+                                                                                if (study.storage.type !== 'local-download') {
+                                                                                    const adapter = createStorageAdapter(study.storage);
+                                                                                    const result = await adapter.updateStatus(study.id, 'closed');
+                                                                                    if (!result.success) {
+                                                                                        setSaveError(result.error || "Failed to close study.");
+                                                                                        setIsSaving(false);
+                                                                                        return;
+                                                                                    }
+                                                                                }
+
+                                                                                const updated = {
+                                                                                    ...study,
+                                                                                    accessStatus: 'closed' as const,
+                                                                                    closedAt: new Date().toISOString(),
+                                                                                    updatedAt: new Date().toISOString(),
+                                                                                };
+                                                                                setStudy(updated);
+                                                                            } catch (error) {
+                                                                                setSaveError(error instanceof Error ? error.message : "Failed to close study");
+                                                                            } finally {
+                                                                                setIsSaving(false);
+                                                                            }
+                                                                        }}
+                                                                        className="gap-2 w-full whitespace-nowrap"
+                                                                        disabled={isSaving}
+                                                                    >
+                                                                        {isSaving ? (
+                                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                                        ) : (
+                                                                            <>
+                                                                                <XCircle className="h-4 w-4" />
+                                                                                Close Study
+                                                                            </>
+                                                                        )}
+                                                                    </Button>
+                                                                ) : (
+                                                                    <Button
+                                                                        onClick={async () => {
+                                                                            setIsSaving(true);
+                                                                            setSaveError(null);
+
+                                                                            try {
+                                                                                // Update status in storage if not local-download
+                                                                                if (study.storage.type !== 'local-download') {
+                                                                                    const adapter = createStorageAdapter(study.storage);
+                                                                                    const result = await adapter.updateStatus(study.id, 'active');
+                                                                                    if (!result.success) {
+                                                                                        setSaveError(result.error || "Failed to reopen study.");
+                                                                                        setIsSaving(false);
+                                                                                        return;
+                                                                                    }
+                                                                                }
+
+                                                                                const updated = {
+                                                                                    ...study,
+                                                                                    accessStatus: 'active' as const,
+                                                                                    closedAt: undefined, // Clear closed date when reopened
+                                                                                    updatedAt: new Date().toISOString(),
+                                                                                };
+                                                                                setStudy(updated);
+                                                                            } catch (error) {
+                                                                                setSaveError(error instanceof Error ? error.message : "Failed to reopen study");
+                                                                            } finally {
+                                                                                setIsSaving(false);
+                                                                            }
+                                                                        }}
+                                                                        className="gap-2 w-full whitespace-nowrap"
+                                                                        disabled={isSaving}
+                                                                    >
+                                                                        {isSaving ? (
+                                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                                        ) : (
+                                                                            <>
+                                                                                <Globe className="h-4 w-4" />
+                                                                                Reopen Study
+                                                                            </>
+                                                                        )}
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Shareable Link Section - Only shown when published */}
+                                {study.status === 'published' && (
+                                    <Card>
+                                        <CardContent className="pt-6">
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                                        Shareable Participant Link
+                                                    </h3>
+                                                    <p className="text-sm text-gray-600 mb-4">
+                                                        Share this link with participants to take your tree test.
+                                                    </p>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input
+                                                            readOnly
+                                                            value={`${window.location.origin}/test/${study.id}`}
+                                                            className="font-mono text-sm"
+                                                        />
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(`${window.location.origin}/test/${study.id}`);
+                                                            }}
+                                                        >
+                                                            Copy Link
+                                                        </Button>
+                                                    </div>
+                                                    {study.accessStatus === 'closed' && (
+                                                        <Alert className="mt-4 bg-yellow-50 border-yellow-200">
+                                                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                                            <AlertTitle className="text-yellow-800">Study Closed</AlertTitle>
+                                                            <AlertDescription className="text-yellow-700">
+                                                                This study is closed and not accepting new participants. Reopen it to allow new participants.
+                                                            </AlertDescription>
+                                                        </Alert>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Export Study Configuration */}
+                                <Card>
+                                    <CardContent className="pt-6">
+                                        <div className="space-y-4">
+                                            <div>
+                                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                                    Export Study Configuration
+                                                </h3>
+                                                <p className="text-sm text-gray-600 mb-4">
+                                                    Download your study configuration as a JSON file. This includes your tree structure, tasks, settings, and storage configuration. You can use this file to import the study into the Analyzer later.
+                                                </p>
+                                                <Button
+                                                    onClick={() => exportStudyConfig(study)}
+                                                    className="gap-2"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                    Download Study Config JSON
+                                                </Button>
+                                </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </div>
                         )}
                     </CardContent>

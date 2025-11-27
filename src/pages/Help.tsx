@@ -1,10 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle, Clock, Target, Activity, Plus, BarChart3, Network, ClipboardList, Settings, Eye, Database, Share2, AlertCircle } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function Help() {
     const [activeTab, setActiveTab] = useState("analyze");
+    const location = useLocation();
+
+    // Handle hash navigation to scroll to specific sections
+    useEffect(() => {
+        if (location.hash) {
+            // Switch to create tab if hash is present (custom-api-tools is in create tab)
+            setActiveTab("create");
+            
+            // Small delay to ensure tab content is rendered
+            setTimeout(() => {
+                const element = document.getElementById(location.hash.substring(1));
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 100);
+        }
+    }, [location.hash]);
 
     return (
         <div className="container mx-auto p-4 py-8 max-w-4xl">
@@ -226,25 +243,294 @@ export function Help() {
                                 <h2 className="text-xl font-bold text-gray-900">Step 5: Configure Data Storage</h2>
                             </div>
                             <p className="mb-4 text-gray-600">
-                                Choose where participant responses will be stored. You have three options:
+                                Choose where participant responses will be stored. You have four options:
                             </p>
                             <div className="space-y-3">
                                 <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                                    <h3 className="font-semibold text-green-900 mb-1">Google Sheets</h3>
+                                    <h3 className="font-semibold text-green-900 mb-1">Hosted Backend</h3>
                                     <p className="text-sm text-green-800">
-                                        Responses are automatically sent to a Google Sheet via Google Apps Script. You'll need to set up a script URL.
+                                        Secure, managed storage with dashboard and analytics. Recommended for production use.
                                     </p>
                                 </div>
                                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                    <h3 className="font-semibold text-blue-900 mb-1">Webhook</h3>
+                                    <h3 className="font-semibold text-blue-900 mb-1">Google Sheets</h3>
                                     <p className="text-sm text-blue-800">
-                                        Send responses to any webhook endpoint (e.g., Power Automate, Zapier, custom API). Supports custom headers for authentication.
+                                        Store results directly in Google Sheets. Easy setup, free to use. Two methods available: Apps Script (recommended) or OAuth API (advanced).
                                     </p>
                                 </div>
                                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                                    <h3 className="font-semibold text-gray-900 mb-1">Local Download</h3>
+                                    <h3 className="font-semibold text-gray-900 mb-1">Custom API</h3>
                                     <p className="text-sm text-gray-700">
-                                        Participants download their responses as a JSON/CSV file. Useful for testing or when you don't have external storage set up.
+                                        Connect to your own server or database. Free and flexible - bring your own backend infrastructure.
+                                    </p>
+                                </div>
+                                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+                                    <h3 className="font-semibold text-yellow-900 mb-1">Local Download</h3>
+                                    <p className="text-sm text-yellow-800">
+                                        Participants download their responses as an Excel file. Useful for testing or when you don't have external storage set up.
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="google-sheets-setup" className="rounded-lg border bg-white p-8 shadow-sm scroll-mt-8">
+                            <div className="mb-6 flex items-center gap-3">
+                                <Database className="h-6 w-6 text-blue-600" />
+                                <h2 className="text-xl font-bold text-gray-900">Google Sheets Setup Guide</h2>
+                            </div>
+                            <p className="mb-4 text-gray-600">
+                                Google Sheets integration offers two setup methods. Choose the one that works best for you.
+                            </p>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Method 1: Apps Script (Recommended)</h3>
+                                    <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                                        <p className="text-sm text-green-800 mb-3">
+                                            <strong>Best for:</strong> Most users. No coding required, easy one-click setup.
+                                        </p>
+                                        <ol className="text-sm text-green-800 space-y-2 list-decimal list-inside">
+                                            <li><strong>Create a Google Sheet:</strong> Create a new Google Sheet or use an existing one for your results.</li>
+                                            <li><strong>Open Apps Script Editor:</strong> 
+                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                    <li>In your Google Sheet, go to <strong>Extensions → Apps Script</strong></li>
+                                                    <li>This opens the Apps Script editor in a new tab</li>
+                                                </ul>
+                                            </li>
+                                            <li><strong>Install the Script:</strong>
+                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                    <li>Delete any existing code in the editor</li>
+                                                    <li>In the Tree Test Creator, go to Storage tab → Google Sheets → click "Show Script"</li>
+                                                    <li>Click "Copy Script" to copy the entire script</li>
+                                                    <li>Paste the script into the Apps Script editor</li>
+                                                    <li>Click <strong>Save</strong> (or press Ctrl+S / Cmd+S)</li>
+                                                </ul>
+                                            </li>
+                                            <li><strong>Deploy as Web App:</strong>
+                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                    <li>Click <strong>Deploy → New deployment</strong></li>
+                                                    <li>Click the <strong>gear icon (⚙️)</strong> next to "Select type"</li>
+                                                    <li>Choose <strong>"Web app"</strong> from the dropdown</li>
+                                                    <li>In the Configuration tab, set the following:
+                                                        <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                                                            <li><strong>Description:</strong> Enter a description (e.g., "Tree Test Results Webhook")</li>
+                                                            <li><strong>Execute as:</strong> Keep "Me (your-email@gmail.com)" - this is correct</li>
+                                                            <li><strong>Who has access:</strong> <strong className="text-red-600">IMPORTANT:</strong> Change this to <strong>"Anyone"</strong> (not "Only myself")</li>
+                                                        </ul>
+                                                    </li>
+                                                    <li>Click <strong>Deploy</strong></li>
+                                                    <li>Google will show a dialog with your Web app URL - <strong>copy this URL</strong></li>
+                                                    <li>The URL looks like: <code className="text-xs bg-white px-1 py-0.5 rounded">https://script.google.com/macros/s/ABC123.../exec</code></li>
+                                                </ul>
+                                            </li>
+                                            <li><strong>Configure in Creator:</strong> 
+                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                    <li>Go back to the Tree Test Creator Storage configuration</li>
+                                                    <li>Paste the webhook URL into the "Webhook URL" field</li>
+                                                </ul>
+                                            </li>
+                                            <li><strong>Test Connection:</strong> Click "Test Connection" to verify it works</li>
+                                        </ol>
+                                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                                            <p className="text-xs text-yellow-800 font-semibold mb-1">⚠️ Important Note:</p>
+                                            <p className="text-xs text-yellow-700">
+                                                You <strong>must</strong> set "Who has access" to <strong>"Anyone"</strong> for the webhook to work. 
+                                                If you set it to "Only myself", the Tree Test app won't be able to send data to your sheet.
+                                            </p>
+                                        </div>
+                                        <p className="text-xs text-green-700 mt-3 italic">
+                                            The Apps Script automatically creates the correct column headers and appends participant results as new rows.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Method 2: OAuth API (Advanced)</h3>
+                                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                        <p className="text-sm text-blue-800 mb-3">
+                                            <strong>Best for:</strong> Advanced users who want direct API access and more control.
+                                        </p>
+                                        <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                                            <li><strong>Create Google Cloud Project:</strong>
+                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                    <li>Go to <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
+                                                    <li>Create a new project or select existing one</li>
+                                                    <li>Enable Google Sheets API</li>
+                                                </ul>
+                                            </li>
+                                            <li><strong>Configure OAuth:</strong>
+                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                    <li>Create OAuth 2.0 credentials</li>
+                                                    <li>Add authorized redirect URIs</li>
+                                                    <li>Copy Client ID and Client Secret</li>
+                                                </ul>
+                                            </li>
+                                            <li><strong>Connect in Creator:</strong>
+                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                    <li>Click "Connect to Google"</li>
+                                                    <li>Authorize the app to access your Google Sheets</li>
+                                                    <li>Enter your Google Sheet ID (from the sheet URL)</li>
+                                                    <li>Optionally specify sheet tab name</li>
+                                                </ul>
+                                            </li>
+                                        </ol>
+                                        <p className="text-xs text-blue-700 mt-3 italic">
+                                            OAuth API provides direct access to Google Sheets API with full read/write capabilities.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4">
+                                    <h4 className="font-semibold text-blue-900 mb-2">Getting Your Sheet ID</h4>
+                                    <p className="text-sm text-blue-800 mb-2">
+                                        Your Google Sheet ID is found in the sheet URL:
+                                    </p>
+                                    <p className="text-xs text-blue-700 font-mono bg-white p-2 rounded border border-blue-200">
+                                        https://docs.google.com/spreadsheets/d/<strong className="text-blue-900">[SHEET_ID]</strong>/edit
+                                    </p>
+                                    <p className="text-xs text-blue-600 mt-2">
+                                        Copy the long string between <code>/d/</code> and <code>/edit</code>.
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="custom-api-tools" className="rounded-lg border bg-white p-8 shadow-sm scroll-mt-8">
+                            <div className="mb-6 flex items-center gap-3">
+                                <Network className="h-6 w-6 text-blue-600" />
+                                <h2 className="text-xl font-bold text-gray-900">Custom API: Tools & Platforms</h2>
+                            </div>
+                            <p className="mb-4 text-gray-600">
+                                If you're using the Custom API option, you'll need a backend that implements the required REST API endpoints. Here are recommended tools and platforms you can use:
+                            </p>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">No-Code / Low-Code Platforms</h3>
+                                    <div className="space-y-3">
+                                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                            <h4 className="font-semibold text-blue-900 mb-2">Supabase</h4>
+                                            <p className="text-sm text-blue-800 mb-2">
+                                                PostgreSQL database with auto-generated REST API. PostgREST automatically creates REST endpoints from your database schema.
+                                            </p>
+                                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                                <li>Free tier available</li>
+                                                <li>Auto-generates REST endpoints</li>
+                                                <li>Built-in authentication (JWT)</li>
+                                                <li>Setup: Create tables, endpoints are auto-generated</li>
+                                            </ul>
+                                        </div>
+                                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                            <h4 className="font-semibold text-blue-900 mb-2">Airtable</h4>
+                                            <p className="text-sm text-blue-800 mb-2">
+                                                Spreadsheet-like interface with built-in REST API. Perfect if you prefer a visual database.
+                                            </p>
+                                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                                <li>Free tier available</li>
+                                                <li>Built-in REST API</li>
+                                                <li>API key authentication</li>
+                                                <li>Setup: Create base with tables, use Airtable's REST API</li>
+                                            </ul>
+                                        </div>
+                                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                            <h4 className="font-semibold text-blue-900 mb-2">n8n (Self-hosted or Cloud)</h4>
+                                            <p className="text-sm text-blue-800 mb-2">
+                                                Workflow automation platform that can create HTTP endpoints. Visual workflow builder for API logic.
+                                            </p>
+                                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                                <li>Free self-hosted option</li>
+                                                <li>Create webhooks/HTTP endpoints</li>
+                                                <li>Visual workflow builder</li>
+                                                <li>Setup: Create workflows that respond to HTTP requests</li>
+                                            </ul>
+                                        </div>
+                                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                            <h4 className="font-semibold text-blue-900 mb-2">Firebase (Google)</h4>
+                                            <p className="text-sm text-blue-800 mb-2">
+                                                Firestore database with REST API and Cloud Functions for custom endpoints.
+                                            </p>
+                                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                                <li>Free tier available</li>
+                                                <li>Firestore REST API + Cloud Functions</li>
+                                                <li>Built-in authentication</li>
+                                                <li>Setup: Use Firestore REST API + Cloud Functions</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Serverless Platforms</h3>
+                                    <div className="space-y-3">
+                                        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                                            <h4 className="font-semibold text-purple-900 mb-2">Vercel Serverless Functions</h4>
+                                            <p className="text-sm text-purple-800 mb-2">
+                                                Deploy Node.js/Python functions as API endpoints. Great for quick deployment.
+                                            </p>
+                                            <ul className="text-xs text-purple-700 space-y-1 list-disc list-inside">
+                                                <li>Free tier available</li>
+                                                <li>Easy deployment</li>
+                                                <li>Setup: Create API route files, deploy</li>
+                                            </ul>
+                                        </div>
+                                        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                                            <h4 className="font-semibold text-purple-900 mb-2">Netlify Functions</h4>
+                                            <p className="text-sm text-purple-800 mb-2">
+                                                Similar to Vercel, deploy serverless functions as API endpoints.
+                                            </p>
+                                            <ul className="text-xs text-purple-700 space-y-1 list-disc list-inside">
+                                                <li>Free tier available</li>
+                                                <li>Easy deployment</li>
+                                                <li>Setup: Create functions, deploy</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Code-Based Solutions</h3>
+                                    <div className="space-y-3">
+                                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                            <h4 className="font-semibold text-gray-900 mb-2">Express.js (Node.js)</h4>
+                                            <p className="text-sm text-gray-700 mb-2">
+                                                Quick REST API setup. Can deploy to Railway, Render, Fly.io, or any Node.js host.
+                                            </p>
+                                            <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
+                                                <li>Full control over API logic</li>
+                                                <li>Use test-server.js as a starting point</li>
+                                                <li>Deploy to any Node.js hosting service</li>
+                                            </ul>
+                                        </div>
+                                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                            <h4 className="font-semibold text-gray-900 mb-2">FastAPI (Python)</h4>
+                                            <p className="text-sm text-gray-700 mb-2">
+                                                Fast REST API framework with auto-generated API documentation.
+                                            </p>
+                                            <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
+                                                <li>Auto-generates API docs</li>
+                                                <li>Fast and modern</li>
+                                                <li>Deploy to any Python host</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4">
+                                    <h4 className="font-semibold text-blue-900 mb-2">Required API Endpoints</h4>
+                                    <p className="text-sm text-blue-800 mb-2">
+                                        Your Custom API must implement these REST endpoints:
+                                    </p>
+                                    <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside font-mono">
+                                        <li>GET /health - Health check (for connection testing)</li>
+                                        <li>POST /studies - Create new study</li>
+                                        <li>PUT /studies/:id - Update study configuration</li>
+                                        <li>GET /studies/:id - Fetch study configuration</li>
+                                        <li>GET /studies/:id/status - Check study status</li>
+                                        <li>PUT /studies/:id/status - Update study status (active/closed)</li>
+                                        <li>POST /studies/:id/results - Submit participant results</li>
+                                    </ul>
+                                    <p className="text-xs text-blue-600 mt-3 italic">
+                                        See the test-server.js file in the project for a complete reference implementation.
                                     </p>
                                 </div>
                             </div>

@@ -8,6 +8,7 @@
   * \[x] Add/edit/delete nodes
   * \[x] Set node links/destinations
   * \[x] Update styling to match analyzer design
+  * \[x] Always show current tree structure in text editor for easy editing
 
 * \[x] Build Task Editor component
 
@@ -39,18 +40,20 @@
   * \[x] Editable study name and creator name
   * \[x] Single study limitation (one study at a time in Creator mode)
   * \[x] Local storage warning tooltip
+  * \[x] Status badge in Creator header (shows Draft/Published/Closed status)
 
 ## Phase 2: Storage Configuration
 
 **Architecture:** Hosted backend (primary, paid) + Custom API (optional, free/BYOS)
 
-* \[ ] Define storage adapter interface
-  * \[ ] submit(result: ParticipantResult) - Must accept data in analyzer-compatible format (see Phase 5)
-  * \[ ] checkStatus(studyId: string)
-  * \[ ] updateStatus(studyId: string, status: 'active' | 'closed')
-  * \[ ] fetchConfig(studyId: string)
-  * \[ ] testConnection()
-  * \[ ] Note: All adapters must ensure submitted data matches analyzer format requirements (Participant ID, Status, timestamps, task paths, outcomes, confidence, times)
+* \[x] Define storage adapter interface
+  * \[x] submit(result: ParticipantResult) - Must accept data in analyzer-compatible format (see Phase 5)
+  * \[x] saveConfig(config: StudyConfig) - Save or update study configuration
+  * \[x] checkStatus(studyId: string)
+  * \[x] updateStatus(studyId: string, status: 'active' | 'closed')
+  * \[x] fetchConfig(studyId: string)
+  * \[x] testConnection()
+  * \[x] Note: All adapters must ensure submitted data matches analyzer format requirements (Participant ID, Status, timestamps, task paths, outcomes, confidence, times)
 
 * \[ ] Build hosted backend service (primary storage - paid feature)
   * \[ ] Backend API architecture:
@@ -105,8 +108,8 @@
   * \[ ] Error handling and retry logic
   * \[ ] Token refresh logic
 
-* \[ ] Create storage configuration UI
-  * \[ ] Storage type selector (Hosted Backend / Custom API / Local Download)
+* \[x] Create storage configuration UI
+  * \[x] Storage type selector (Hosted Backend / Custom API / Local Download)
   * \[ ] Default to "Hosted Backend" with upgrade/pricing info
   * \[ ] Hosted Backend configuration:
     * \[ ] User registration/login flow
@@ -114,25 +117,30 @@
     * \[ ] Authentication token management
     * \[ ] Account status and subscription info
     * \[ ] Pricing/payment integration (Stripe/Paddle)
-  * \[ ] Custom API configuration (optional, free/BYOS):
-    * \[ ] API base URL input (e.g., https://api.example.com)
-    * \[ ] Authentication method selector (API Key / Bearer Token / Custom Headers)
-    * \[ ] Authentication credentials input (masked in UI)
+  * \[x] Custom API configuration (optional, free/BYOS):
+    * \[x] API base URL input (e.g., https://api.example.com)
+    * \[x] Authentication method selector (API Key / Bearer Token / Custom Headers)
+    * \[x] Authentication credentials input (masked in UI)
     * \[ ] Optional custom headers configuration
-    * \[ ] "Free - Bring Your Own Backend" badge
+    * \[x] "Free - Bring Your Own Backend" badge
     * \[ ] Link to REST API documentation
-  * \[ ] Test connection button
+  * \[x] Test connection button
   * \[ ] Connection status indicator
 
-* \[ ] Implement Custom API adapter (optional, free/BYOS)
-  * \[ ] Generic REST API client with configurable base URL and headers
-  * \[ ] Submit participant results (POST /studies/:studyId/results)
-  * \[ ] Check study status (GET /studies/:studyId/status)
-  * \[ ] Update study status (PUT /studies/:studyId/status)
-  * \[ ] Fetch study configuration (GET /studies/:studyId)
-  * \[ ] Test connection functionality
-  * \[ ] Error handling and retry logic
-  * \[ ] Support for standard HTTP authentication methods
+* \[x] Implement Custom API adapter (optional, free/BYOS)
+  * \[x] Generic REST API client with configurable base URL and headers
+  * \[x] Save study configuration (POST /studies or PUT /studies/:id)
+  * \[x] Submit participant results (POST /studies/:studyId/results)
+  * \[x] Check study status (GET /studies/:studyId/status)
+  * \[x] Update study status (PUT /studies/:studyId/status)
+  * \[x] Fetch study configuration (GET /studies/:studyId)
+  * \[x] Test connection functionality
+  * \[x] Error handling and retry logic
+  * \[x] Support for standard HTTP authentication methods
+
+* \[x] Create storage adapter factory
+  * \[x] Factory utility to create adapter instances from storage config
+  * \[x] Support for Custom API and Local Download adapters
 
 * \[ ] Create documentation
   * \[ ] Hosted Backend setup guide:
@@ -167,57 +175,108 @@
   * \[x] Auto-save loaded dataset
   * \[x] Persist upload form inputs (tree text, task instructions, expected paths)
 
-* \[ ] Implement Local Download adapter (for testing/development)
+* \[x] Implement Local Download adapter (for testing/development)
   * \[ ] Save to localStorage during test
-  * \[ ] Export results as CSV/JSON
+  * \[x] Export results as CSV/JSON (Excel format with analyzer-compatible columns)
 
 ## Phase 3: Study Sharing \& Loading
 
-* \[ ] Study status management in Study Library
-  * \[ ] Display study status (Active/Closed/Draft) in study list/library
-  * \[ ] Toggle study status (open/close) functionality
-  * \[ ] Status updates via hosted backend API
-  * \[ ] Status updates via custom API (if custom API storage selected)
+* \[x] Create study configuration JSON schema
+  * \[x] Include all study config data (tree, tasks, settings, storage config)
+  * \[x] Include metadata (name, creator, timestamps, study ID)
+  * \[x] Use cryptographically secure study IDs (UUIDs, not sequential)
+  * \[x] Add schema version field for future compatibility
+  * \[x] Define JSON structure based on StudyConfig interface
 
-* \[x] Local storage persistence for analyzer data (legacy - for BYOS users)
-  * \[x] Auto-save loaded dataset
-  * \[x] Persist upload form inputs (tree text, task instructions, expected paths)
-
-* \[ ] Implement Local Download adapter (for testing/development)
-  * \[ ] Save to localStorage during test
-  * \[ ] Export results as CSV/JSON
-
-## Phase 3: Study Sharing \& Loading
-
-* \[ ] Create study configuration JSON schema
-  * \[ ] Include all study config data (tree, tasks, settings, storage config)
-  * \[ ] Include metadata (name, creator, timestamps, study ID)
-  * \[ ] Use cryptographically secure study IDs (UUIDs, not sequential)
-
-* \[ ] Build study save/export functionality (Creator page)
+* \[x] Build study save/publish functionality (Creator page)
+  * \[x] Rename "Export" tab to "Launch Study" tab in Creator
   * \[ ] Auto-save draft studies (on changes or manual save):
     * \[ ] Hosted backend: Auto-save to backend API (POST /api/studies or PUT /api/studies/:id)
-    * \[ ] Custom API: Save to custom API endpoint
-    * \[ ] Local Download: Save to localStorage only
-  * \[ ] Mark study as "draft" or "published" status
-  * \[ ] Generate complete study configuration JSON
-  * \[ ] Download JSON file option (for external import/backup)
-  * \[ ] Export includes all data needed for Study Library import
-  * \[ ] Store study config to storage:
+    * \[x] Custom API: Save to custom API endpoint (POST /studies or PUT /studies/:id)
+    * \[x] Local Download: Save to localStorage only
+  * \[x] Mark study as "draft" or "published" status
+  * \[x] Store study config to storage when publishing:
     * \[ ] Hosted backend: Automatically on save (drafts and published studies)
-    * \[ ] Custom API: On save/export to custom API endpoint
-    * \[ ] Local Download: localStorage only
-  * \[ ] Generate shareable participant link with study ID only
-  * \[ ] Link format: `/test/:studyId` (e.g., `/test/study-abc123`)
-  * \[ ] Only published studies can be shared via participant link
+    * \[x] Custom API: On publish to custom API endpoint
+    * \[x] Local Download: localStorage only (no remote storage)
+  * \[x] Generate shareable participant link with study ID only
+  * \[x] Link format: `/test/:studyId` (e.g., `/test/study-abc123`)
+  * \[x] Only published studies can be shared via participant link
+  * \[x] Validation before publishing:
+    * \[x] Ensure tree structure is not empty
+    * \[x] Ensure at least one task is defined
+    * \[x] Ensure storage configuration is valid
+    * \[x] Show validation errors if requirements not met
 
-* \[ ] Build participant link sharing UI (Creator Export tab)
-  * \[ ] Display generated shareable link
-  * \[ ] Copy link to clipboard button
+* \[x] Build Launch Study UI (Creator "Launch Study" tab - renamed from Export)
+  * \[x] Study status indicator (Draft / Published)
+  * \[x] "Publish Study" button (only for draft studies)
+  * \[x] "Unpublish Study" button (only for published studies - makes it draft again)
+  * \[x] Display generated shareable participant link (only when published)
+  * \[x] Copy link to clipboard button
   * \[ ] QR code generation for mobile testing
   * \[ ] Download QR code as image
   * \[ ] Web Share API integration (optional, for native sharing)
-  * \[ ] Link validation and error handling
+  * \[x] Link validation and error handling
+  * \[x] Study status management:
+    * \[x] Show current status (Draft/Published)
+    * \[x] Show publish date if published
+    * \[ ] Show participant count (if available from storage)
+  * \[x] Storage-specific publish behavior:
+    * \[ ] Hosted Backend: Save to backend API, show success/error
+    * \[x] Custom API: Save to custom API, show success/error
+    * \[x] Local Download: Save to localStorage, show instructions for sharing
+  * \[x] Export study configuration JSON (Step 1 - Build First):
+    * \[x] "Download Study Config" button in Launch Study tab
+    * \[x] Downloads complete study configuration as JSON file
+    * \[x] File format: `{study-name}-config.json`
+    * \[x] Includes all StudyConfig data (tree, tasks, settings, storage, metadata)
+    * \[x] Includes schema version for future compatibility
+    * \[x] For backup and external sharing
+    * \[x] This defines the schema that Analyzer will import
+
+* \[ ] Build Export Results functionality (Creator "Launch Study" tab)
+  * \[ ] Show results section only if study has been published and has participants
+  * \[ ] Display participant count and last updated timestamp
+  * \[ ] Storage-specific export workflows:
+    * \[ ] Local Download storage:
+      * \[ ] Instructions for data collection:
+        * \[ ] Explain that participants download Excel files after completing test
+        * \[ ] Provide instructions for collecting files from participants
+        * \[ ] Explain file naming convention
+        * \[ ] Show example of what participant download looks like
+      * \[ ] Instructions for loading into Analyzer:
+        * \[ ] Guide users to go to Analyzer page
+        * \[ ] Explain how to upload collected Excel files
+        * \[ ] Explain that they can upload multiple files (one per participant)
+        * \[ ] Or combine all participant files into one Excel file with multiple rows
+        * \[ ] Explain data format requirements (analyzer-compatible columns)
+      * \[ ] Template/example of expected data format
+    * \[ ] Custom API storage:
+      * \[ ] Instructions for exporting from custom backend:
+        * \[ ] Explain how to export results from their API/database
+        * \[ ] Provide example API calls to fetch results (GET /studies/:id/results)
+        * \[ ] Explain expected data format (analyzer-compatible CSV/Excel)
+        * \[ ] Provide data format validation checklist
+      * \[ ] Instructions for loading into Analyzer:
+        * \[ ] Guide users to export data from their backend in correct format
+        * \[ ] Guide users to Analyzer page to upload exported file
+        * \[ ] Validate data format before upload
+      * \[ ] Link to REST API documentation for their backend
+    * \[ ] Hosted Backend storage:
+      * \[ ] "Open in Analyzer" button (direct integration):
+        * \[ ] Fetch all participant results from backend API (GET /api/studies/:id/results)
+        * \[ ] Format results in analyzer-compatible format
+        * \[ ] Automatically load into Analyzer page with study data
+        * \[ ] Show loading state during data fetch
+        * \[ ] Handle errors gracefully (network, auth, etc.)
+      * \[ ] Alternative: "Download Results" button:
+        * \[ ] Export all results as Excel file
+        * \[ ] Download file for offline analysis or backup
+        * \[ ] Include all required analyzer-compatible columns
+      * \[ ] Show participant count and data summary
+      * \[ ] Show last updated timestamp
+      * \[ ] Show study status (Active/Closed)
 
 * \[ ] Build Study Library (rename from Analyzer page)
   * \[ ] Unified interface for both storage types (hosted backend and BYOS)
@@ -235,18 +294,38 @@
     * \[ ] Studies automatically appear after creation/save
   * \[ ] For BYOS (Custom API / Local Download) users:
     * \[ ] Manual import workflow (same interface, different data source)
-    * \[ ] Load study from exported JSON file
-    * \[ ] Load dataset/results file (CSV/Excel) - dual-file upload
-    * \[ ] Match dataset to study configuration
+    * \[x] Load study from exported JSON file (Step 2 - Build After Export):
+      * \[x] Add JSON config file upload option in Analyzer UploadView
+      * \[x] Parse StudyConfig JSON file
+      * \[x] Extract tree structure and tasks from config
+      * \[x] Pre-fill tree structure and task instructions in upload form
+      * \[x] Validate JSON schema version compatibility
+      * \[x] Show error if JSON format is invalid or incompatible
+    * \[ ] Load dataset/results file (CSV/Excel) - dual-file upload:
+      * \[ ] After JSON config is loaded, upload Excel/CSV results file
+      * \[ ] Match dataset to study configuration (validate task count matches)
+      * \[ ] Show validation errors if tasks don't match
     * \[ ] Local storage persistence for imported studies
     * \[ ] Delete studies from local library
   * \[ ] Study actions:
     * \[ ] View study details and results
     * \[ ] Edit study (opens Creator with study loaded)
     * \[ ] Duplicate/clone study
-    * \[ ] Export study (JSON download)
+    * \[ ] Export study configuration (JSON download)
+    * \[ ] Export Results (see storage-specific workflows below)
     * \[ ] Delete study
     * \[ ] Toggle study status (Active/Closed) - for hosted backend only
+  * \[ ] Export Results in Study Library (same workflows as Creator, but for any study):
+    * \[ ] Local Download storage:
+      * \[ ] Instructions for data collection and loading into Analyzer
+      * \[ ] Template/example of expected data format
+    * \[ ] Custom API storage:
+      * \[ ] Instructions for exporting from backend and loading into Analyzer
+      * \[ ] Link to REST API documentation
+    * \[ ] Hosted Backend storage:
+      * \[ ] "Open in Analyzer" button (direct integration)
+      * \[ ] "Download Results" button (Excel export)
+      * \[ ] Show participant count and data summary
   * \[ ] Study Library routing:
     * \[ ] Update route from `/analyze` to `/library`
     * \[ ] Update navigation and links throughout app

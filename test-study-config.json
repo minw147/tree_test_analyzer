@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "1.0",
+  "id": "study-1764135987320-lfkamfn",
+  "name": "Test Study",
+  "creator": "",
+  "tree": [
+    {
+      "id": "node-1764136871638-e6st3zh",
+      "name": "Home",
+      "children": [
+        {
+          "id": "node-1764136871638-tfkkvjj",
+          "name": "Products",
+          "children": [
+            {
+              "id": "node-1764136871638-qs0qcf8",
+              "name": "Phone",
+              "children": []
+            },
+            {
+              "id": "node-1764136871638-v2jeqo8",
+              "name": "Laptop",
+              "children": []
+            },
+            {
+              "id": "node-1764136871638-w6otled",
+              "name": "headset",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "node-1764136871638-7108186",
+          "name": "Contact Us",
+          "children": []
+        },
+        {
+          "id": "node-1764136871638-nvm9tr8",
+          "name": "Career",
+          "children": []
+        },
+        {
+          "id": "node-1764136871638-wfg6zrn",
+          "name": "Service",
+          "children": []
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "node-1764136882523-31cujfp",
+      "description": "Buy laptop",
+      "correctPath": [
+        "/Home/Products/Laptop"
+      ]
+    }
+  ],
+  "storage": {
+    "type": "local-download"
+  },
+  "settings": {
+    "welcomeMessage": "# Welcome to this Tree Test\n\nThank you for participating!",
+    "instructions": "# Instructions\n\nRead each task carefully and navigate through the tree to find where you think the answer would be located.",
+    "completedMessage": "# Thank you!\n\nYour responses have been recorded."
+  },
+  "createdAt": "2025-11-26T05:46:27.320Z",
+  "updatedAt": "2025-11-26T23:40:56.587Z"
+}

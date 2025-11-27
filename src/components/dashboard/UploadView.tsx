@@ -2,12 +2,14 @@ import { useState, useMemo, useEffect } from "react";
 import { Upload, FileText, AlertCircle, Plus, Trash2, ListPlus } from "lucide-react";
 import { parseResponseData, parseTreeFromString } from "@/lib/data-parser";
 import type { UploadedData, Item } from "@/lib/types";
+import type { StudyConfig } from "@/lib/types/study";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TreePathSelector } from "@/components/ui/tree-path-selector";
+import { validateStudyConfig, treeNodesToText } from "@/lib/study-exporter";
 
 interface UploadViewProps {
     onDataLoaded: (data: Omit<UploadedData, "id" | "createdAt" | "updatedAt">) => void;
@@ -47,6 +49,8 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
         savedForm?.expectedPaths || [[""], [""], [""]]
     );
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+    const [configFile, setConfigFile] = useState<File | null>(null);
+    const [configLoaded, setConfigLoaded] = useState(false);
 
     // Save form data to localStorage whenever it changes
     useEffect(() => {
@@ -76,6 +80,54 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
         if (file) {
             setUploadedFile(file);
             setError(null);
+        }
+    };
+
+    const handleConfigFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setError(null);
+        setConfigFile(file);
+
+        try {
+            const text = await file.text();
+            const config: StudyConfig = JSON.parse(text);
+
+            // Validate the config
+            const validation = validateStudyConfig(config);
+            if (!validation.valid) {
+                setError(validation.error || "Invalid study configuration file");
+                setConfigFile(null);
+                return;
+            }
+
+            // Convert tree to text format
+            const treeTextValue = treeNodesToText(config.tree);
+            setTreeText(treeTextValue);
+
+            // Extract task instructions and expected paths
+            const taskInstructionsValue = config.tasks.map(task => task.description);
+            const expectedPathsValue = config.tasks.map(task => 
+                task.correctPath && task.correctPath.length > 0 
+                    ? task.correctPath 
+                    : [""]
+            );
+
+            // Ensure we have at least one task
+            if (taskInstructionsValue.length === 0) {
+                taskInstructionsValue.push("");
+                expectedPathsValue.push([""]);
+            }
+
+            setTaskInstructions(taskInstructionsValue);
+            setExpectedPaths(expectedPathsValue);
+            setConfigLoaded(true);
+        } catch (err) {
+            console.error("Failed to parse config file:", err);
+            setError(err instanceof Error ? err.message : "Failed to parse configuration file");
+            setConfigFile(null);
+            setConfigLoaded(false);
         }
     };
 
@@ -271,6 +323,36 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                    {/* JSON Config Upload Section */}
+                    <div className="space-y-2 border-b pb-4">
+                        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Study Configuration (Optional)
+                        </label>
+                        <p className="text-xs text-gray-500 mb-2">
+                            Upload a study configuration JSON file exported from Creator to automatically fill in tree structure and tasks.
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="file"
+                                accept=".json"
+                                onChange={handleConfigFileUpload}
+                                className="text-sm"
+                                disabled={isProcessing}
+                            />
+                            {configLoaded && (
+                                <span className="text-xs text-green-600 flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Config loaded
+                                </span>
+                            )}
+                        </div>
+                        {configFile && (
+                            <p className="text-xs text-gray-500">
+                                {configFile.name}
+                            </p>
+                        )}
+                    </div>
+
                     <div className="space-y-2">
                         <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Tree Structure <span className="text-red-500">*</span>

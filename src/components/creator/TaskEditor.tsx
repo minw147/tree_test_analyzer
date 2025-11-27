@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Plus, Trash2, ArrowUp, ArrowDown, ListPlus } from "lucide-react";
 import type { Task, TreeNode } from "@/lib/types/study";
 import type { Item } from "@/lib/types";
@@ -26,7 +26,7 @@ const convertTreeNodesToItems = (nodes: TreeNode[]): Item[] => {
 
 export function TaskEditor({ tasks, tree, onChange }: TaskEditorProps) {
     const bulkAddTextareaRef = useRef<HTMLTextAreaElement>(null);
-    
+
     // Convert tree structure for path selector
     const parsedTree = useMemo<Item[]>(() => {
         return convertTreeNodesToItems(tree);

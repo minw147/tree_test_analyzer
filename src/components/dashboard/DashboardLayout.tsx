@@ -15,7 +15,7 @@ interface DashboardLayoutProps {
     onDelete?: () => void;
 }
 
-export function DashboardLayout({ data, onDataChange, onDelete }: DashboardLayoutProps) {
+export function DashboardLayout({ data, onDataChange, onDelete: _onDelete }: DashboardLayoutProps) {
     const [activeTab, setActiveTab] = useState("overview");
     const [editingName, setEditingName] = useState(false);
     const [editingCreator, setEditingCreator] = useState(false);

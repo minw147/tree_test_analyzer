@@ -11,10 +11,20 @@ export interface Task {
     correctPath?: string[]; // Optional: defines the "correct" answer path
 }
 
+export type StorageType = 'hosted-backend' | 'google-sheets' | 'custom-api' | 'local-download';
+
 export interface StorageConfig {
-    type: 'google-sheets' | 'webhook' | 'local-download';
-    url?: string; // For Google Sheets script URL or Webhook endpoint
-    headers?: Record<string, string>; // For webhook authentication
+    type: StorageType;
+    // For Custom API
+    endpointUrl?: string;
+    authType?: 'none' | 'api-key' | 'bearer-token';
+    apiKey?: string;
+    // For Google Sheets
+    googleSheetsMethod?: 'apps-script' | 'oauth-api'; // Which method to use
+    sheetId?: string;        // Google Sheet ID
+    sheetName?: string;      // Sheet tab name (default: "Results")
+    webhookUrl?: string;     // For Apps Script method (webhook URL)
+    // OAuth token will be stored in sessionStorage/localStorage securely
 }
 
 export interface StudySettings {
@@ -29,6 +39,9 @@ export interface StudySettings {
     };
 }
 
+export type StudyStatus = 'draft' | 'published';
+export type StudyAccessStatus = 'active' | 'closed';
+
 export interface StudyConfig {
     id: string;
     name: string;
@@ -37,17 +50,25 @@ export interface StudyConfig {
     tasks: Task[];
     storage: StorageConfig;
     settings: StudySettings;
+    status?: StudyStatus; // 'draft' | 'published' - whether study is published
+    accessStatus?: StudyAccessStatus; // 'active' | 'closed' - whether study accepts new participants
+    publishedAt?: string; // ISO timestamp when study was published
+    closedAt?: string; // ISO timestamp when study was closed
     createdAt: string;
     updatedAt: string;
 }
 
 // Participant result data structures
+// Participant result data structures
+export type PathOutcome = 'direct-success' | 'indirect-success' | 'failure' | 'skip';
+
 export interface TaskResult {
     taskId: string;
     taskDescription: string;
     pathTaken: string[]; // Array of node names clicked
-    selectedNode?: string; // Final selected node
-    timeMs: number; // Time spent on this task
+    outcome: PathOutcome;
+    confidence?: number; // 1-5 rating
+    timeSeconds: number; // Time spent on this task in seconds
     timestamp: string;
 }
 
@@ -55,7 +76,10 @@ export interface ParticipantResult {
     participantId: string;
     studyId: string;
     studyName: string;
+    status: 'completed' | 'abandoned';
+    startedAt: string; // ISO timestamp
+    completedAt?: string; // ISO timestamp (null if abandoned)
+    totalActiveTime: number; // Total active time in seconds
     taskResults: TaskResult[];
-    totalActiveTime: number; // Total active time across all tasks
-    completedAt: string;
+    userAgent?: string;
 }
