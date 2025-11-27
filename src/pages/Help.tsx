@@ -515,88 +515,237 @@ export function Help() {
                             </p>
 
                             <div className="space-y-6">
+                                {/* Supabase - Ready to Use */}
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">No-Code / Low-Code Platforms</h3>
-                                    <div className="space-y-3">
-                                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                            <h4 className="font-semibold text-blue-900 mb-2">Supabase</h4>
-                                            <p className="text-sm text-blue-800 mb-2">
-                                                PostgreSQL database with auto-generated REST API. PostgREST automatically creates REST endpoints from your database schema.
-                                            </p>
-                                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                                                <li>Free tier available</li>
-                                                <li>Auto-generates REST endpoints</li>
-                                                <li>Built-in authentication (JWT)</li>
-                                                <li>Setup: Create tables, endpoints are auto-generated</li>
-                                            </ul>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">✅ Ready to Use (No Middleware Required)</h3>
+                                    <div className="rounded-lg border-2 border-green-200 bg-green-50 p-6">
+                                        <div className="flex items-start gap-3 mb-4">
+                                            <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
+                                            <div className="flex-1">
+                                                <h4 className="font-semibold text-green-900 mb-2 text-lg">Supabase</h4>
+                                                <p className="text-sm text-green-800 mb-4">
+                                                    PostgreSQL database with auto-generated REST API. PostgREST automatically creates REST endpoints from your database schema. <strong>No middleware required!</strong>
+                                                </p>
+                                                
+                                                <div className="bg-white rounded-lg p-4 mb-4 border border-green-200">
+                                                    <h5 className="font-semibold text-green-900 mb-3">Step-by-Step Setup:</h5>
+                                                    <ol className="text-sm text-green-800 space-y-3 list-decimal list-inside">
+                                                        <li>
+                                                            <strong>Create a Supabase Project:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
+                                                                <li>Go to <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="underline">supabase.com</a> and sign up</li>
+                                                                <li>Create a new project (free tier available)</li>
+                                                                <li>Wait for the database to be provisioned</li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Create the Studies Table:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
+                                                                <li>Go to "Table Editor" in your Supabase dashboard</li>
+                                                                <li>Click "New Table" and name it <code className="bg-green-100 px-1 rounded">studies</code></li>
+                                                                <li>Add these columns:
+                                                                    <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
+                                                                        <li><code className="bg-green-100 px-1 rounded">id</code> - Text (Primary Key)</li>
+                                                                        <li><code className="bg-green-100 px-1 rounded">config</code> - JSONB (to store the full study config)</li>
+                                                                        <li><code className="bg-green-100 px-1 rounded">created_at</code> - Timestamp (default: now())</li>
+                                                                        <li><code className="bg-green-100 px-1 rounded">updated_at</code> - Timestamp (default: now())</li>
+                                                                    </ul>
+                                                                </li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Create the Results Table:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
+                                                                <li>Create another table named <code className="bg-green-100 px-1 rounded">results</code></li>
+                                                                <li>Add these columns:
+                                                                    <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
+                                                                        <li><code className="bg-green-100 px-1 rounded">id</code> - UUID (Primary Key, auto-generated)</li>
+                                                                        <li><code className="bg-green-100 px-1 rounded">study_id</code> - Text (Foreign Key to studies.id)</li>
+                                                                        <li><code className="bg-green-100 px-1 rounded">result_data</code> - JSONB (to store participant results)</li>
+                                                                        <li><code className="bg-green-100 px-1 rounded">created_at</code> - Timestamp (default: now())</li>
+                                                                    </ul>
+                                                                </li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Configure Row Level Security (RLS):</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
+                                                                <li>Go to "Authentication" → "Policies"</li>
+                                                                <li>For <code className="bg-green-100 px-1 rounded">studies</code> table: Enable RLS, create policy "Allow public read" for SELECT</li>
+                                                                <li>For <code className="bg-green-100 px-1 rounded">results</code> table: Enable RLS, create policy "Allow public insert" for INSERT</li>
+                                                                <li>Alternatively, disable RLS for testing (not recommended for production)</li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Get Your API URL and Key:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
+                                                                <li>Go to "Settings" → "API"</li>
+                                                                <li>Copy your "Project URL" (e.g., <code className="bg-green-100 px-1 rounded">https://xxxxx.supabase.co</code>)</li>
+                                                                <li>Copy your "anon" or "service_role" key</li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Configure in Tree Test Suite:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
+                                                                <li>In Settings or Study Storage Editor, select "Custom API"</li>
+                                                                <li>Enter your Supabase Project URL as the "API Endpoint URL"</li>
+                                                                <li>Select "API Key Header" as authentication type</li>
+                                                                <li>Enter your Supabase API key</li>
+                                                                <li>Click "Test Connection" to verify</li>
+                                                            </ul>
+                                                        </li>
+                                                    </ol>
+                                                </div>
+
+                                                <div className="bg-white rounded-lg p-4 border border-green-200">
+                                                    <h5 className="font-semibold text-green-900 mb-2">Supabase API Endpoint Mapping:</h5>
+                                                    <p className="text-xs text-green-800 mb-2">Supabase auto-generates these endpoints from your tables:</p>
+                                                    <ul className="text-xs text-green-700 space-y-1 font-mono">
+                                                        <li>GET /rest/v1/studies?id=eq.{'{'}studyId{'}'} → GET /studies/:id</li>
+                                                        <li>POST /rest/v1/studies → POST /studies</li>
+                                                        <li>PATCH /rest/v1/studies?id=eq.{'{'}studyId{'}'} → PUT /studies/:id</li>
+                                                        <li>POST /rest/v1/results → POST /studies/:id/results</li>
+                                                    </ul>
+                                                    <p className="text-xs text-green-600 mt-3 italic">
+                                                        Note: You may need to create database functions or use Supabase Edge Functions for status endpoints (/status). See Supabase documentation for advanced setup.
+                                                    </p>
+                                                </div>
+
+                                                <ul className="text-xs text-green-700 space-y-1 list-disc list-inside mt-4">
+                                                    <li>Free tier available (500MB database, 2GB bandwidth)</li>
+                                                    <li>Auto-generates REST endpoints via PostgREST</li>
+                                                    <li>Built-in authentication (JWT)</li>
+                                                    <li>Real-time subscriptions available</li>
+                                                </ul>
+                                            </div>
                                         </div>
-                                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                            <h4 className="font-semibold text-blue-900 mb-2">Airtable</h4>
-                                            <p className="text-sm text-blue-800 mb-2">
-                                                Spreadsheet-like interface with built-in REST API. Perfect if you prefer a visual database.
+                                    </div>
+                                </div>
+
+                                {/* Platforms Requiring Middleware */}
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">⚠️ Requires Middleware/Configuration</h3>
+                                    <div className="rounded-lg border-l-4 border-amber-500 bg-amber-50 p-4 mb-4">
+                                        <div className="flex items-start gap-2">
+                                            <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                            <div>
+                                                <h4 className="font-semibold text-amber-900 mb-2">Why Middleware is Needed</h4>
+                                                <p className="text-sm text-amber-800 mb-2">
+                                                    These platforms have their own API structure that doesn't match our required endpoints. You'll need to create a middleware layer (a small API server) that:
+                                                </p>
+                                                <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside ml-4">
+                                                    <li>Receives requests in our format (e.g., <code className="bg-amber-100 px-1 rounded">GET /studies/:id</code>)</li>
+                                                    <li>Translates them to the platform's API format</li>
+                                                    <li>Returns responses in our expected format</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                                            <h4 className="font-semibold text-amber-900 mb-2">Airtable</h4>
+                                            <p className="text-sm text-amber-800 mb-2">
+                                                Spreadsheet-like interface with built-in REST API. <strong>Requires middleware</strong> because Airtable uses base/table/record structure instead of REST endpoints.
                                             </p>
-                                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                                                <li>Free tier available</li>
-                                                <li>Built-in REST API</li>
+                                            <div className="bg-white rounded-lg p-3 mt-3 border border-amber-200">
+                                                <p className="text-xs text-amber-800 mb-2"><strong>Why middleware:</strong> Airtable's API uses <code className="bg-amber-100 px-1 rounded">/v0/{'{'}baseId{'}'}/{'{'}tableName{'}'}</code> format, not <code className="bg-amber-100 px-1 rounded">/studies/:id</code>.</p>
+                                                <p className="text-xs text-amber-800 mb-2"><strong>Solution:</strong> Deploy a middleware server (see "Creating Middleware" section below) that translates between our API format and Airtable's format.</p>
+                                            </div>
+                                            <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside mt-3">
+                                                <li>Free tier available (1,200 records/base)</li>
+                                                <li>Built-in REST API with different structure</li>
                                                 <li>API key authentication</li>
-                                                <li>Setup: Create base with tables, use Airtable's REST API</li>
                                             </ul>
                                         </div>
-                                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                            <h4 className="font-semibold text-blue-900 mb-2">n8n (Self-hosted or Cloud)</h4>
-                                            <p className="text-sm text-blue-800 mb-2">
-                                                Workflow automation platform that can create HTTP endpoints. Visual workflow builder for API logic.
+
+                                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                                            <h4 className="font-semibold text-amber-900 mb-2">n8n (Self-hosted or Cloud)</h4>
+                                            <p className="text-sm text-amber-800 mb-2">
+                                                Workflow automation platform that can create HTTP endpoints. <strong>Requires workflow configuration</strong> to match our API endpoints.
                                             </p>
-                                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                            <div className="bg-white rounded-lg p-3 mt-3 border border-amber-200">
+                                                <p className="text-xs text-amber-800 mb-2"><strong>Why configuration:</strong> You need to create separate workflows for each endpoint (GET /studies/:id, POST /studies, etc.) and configure them to match our API structure.</p>
+                                                <p className="text-xs text-amber-800 mb-2"><strong>Solution:</strong> Create workflows in n8n for each required endpoint, or deploy a middleware server that n8n can call.</p>
+                                            </div>
+                                            <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside mt-3">
                                                 <li>Free self-hosted option</li>
-                                                <li>Create webhooks/HTTP endpoints</li>
+                                                <li>Create webhooks/HTTP endpoints via workflows</li>
                                                 <li>Visual workflow builder</li>
-                                                <li>Setup: Create workflows that respond to HTTP requests</li>
                                             </ul>
                                         </div>
-                                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                            <h4 className="font-semibold text-blue-900 mb-2">Firebase (Google)</h4>
-                                            <p className="text-sm text-blue-800 mb-2">
-                                                Firestore database with REST API and Cloud Functions for custom endpoints.
+
+                                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                                            <h4 className="font-semibold text-amber-900 mb-2">Vercel Serverless Functions / Netlify Functions</h4>
+                                            <p className="text-sm text-amber-800 mb-2">
+                                                Deploy serverless functions as API endpoints. <strong>Requires writing code</strong> to implement each endpoint.
                                             </p>
-                                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                            <div className="bg-white rounded-lg p-3 mt-3 border border-amber-200">
+                                                <p className="text-xs text-amber-800 mb-2"><strong>Why code:</strong> You need to write serverless functions for each endpoint (health, studies, status, results).</p>
+                                                <p className="text-xs text-amber-800 mb-2"><strong>Solution:</strong> Use <code className="bg-amber-100 px-1 rounded">test-server.js</code> as a reference to create your serverless functions. Deploy them to Vercel/Netlify.</p>
+                                            </div>
+                                            <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside mt-3">
                                                 <li>Free tier available</li>
-                                                <li>Firestore REST API + Cloud Functions</li>
-                                                <li>Built-in authentication</li>
-                                                <li>Setup: Use Firestore REST API + Cloud Functions</li>
+                                                <li>Easy deployment</li>
+                                                <li>Requires writing endpoint code</li>
                                             </ul>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Serverless Platforms</h3>
-                                    <div className="space-y-3">
-                                        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-                                            <h4 className="font-semibold text-purple-900 mb-2">Vercel Serverless Functions</h4>
-                                            <p className="text-sm text-purple-800 mb-2">
-                                                Deploy Node.js/Python functions as API endpoints. Great for quick deployment.
-                                            </p>
-                                            <ul className="text-xs text-purple-700 space-y-1 list-disc list-inside">
-                                                <li>Free tier available</li>
-                                                <li>Easy deployment</li>
-                                                <li>Setup: Create API route files, deploy</li>
-                                            </ul>
+                                {/* Creating Middleware Section */}
+                                <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-6">
+                                    <h3 className="text-lg font-semibold text-blue-900 mb-3">Creating Middleware for Custom Platforms</h3>
+                                    <p className="text-sm text-blue-800 mb-4">
+                                        If you want to use Airtable, n8n, or another platform that doesn't match our API structure, you'll need to create a middleware server. Here's how:
+                                    </p>
+                                    
+                                    <div className="bg-white rounded-lg p-4 mb-4 border border-blue-200">
+                                        <h4 className="font-semibold text-blue-900 mb-3">Option 1: Use test-server.js as a Starting Point</h4>
+                                        <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                                            <li>
+                                                <strong>Get the reference implementation:</strong>
+                                                <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
+                                                    <li>Find <code className="bg-blue-100 px-1 rounded">test-server.js</code> in this project</li>
+                                                    <li>It implements all required endpoints in the correct format</li>
+                                                </ul>
+                                            </li>
+                                            <li>
+                                                <strong>Modify for your platform:</strong>
+                                                <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
+                                                    <li>Replace the in-memory storage with calls to your platform's API</li>
+                                                    <li>For Airtable: Use Airtable's JavaScript SDK to read/write records</li>
+                                                    <li>For n8n: Make HTTP requests to your n8n workflows</li>
+                                                    <li>Keep the endpoint structure the same (don't change the routes)</li>
+                                                </ul>
+                                            </li>
+                                            <li>
+                                                <strong>Deploy your middleware:</strong>
+                                                <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
+                                                    <li>Deploy to Railway, Render, Fly.io, or any Node.js hosting service</li>
+                                                    <li>Get your deployment URL</li>
+                                                    <li>Use that URL in Tree Test Suite's Custom API configuration</li>
+                                                </ul>
+                                            </li>
+                                        </ol>
+                                    </div>
+
+                                    <div className="bg-white rounded-lg p-4 border border-blue-200">
+                                        <h4 className="font-semibold text-blue-900 mb-3">Example: Airtable Middleware</h4>
+                                        <p className="text-xs text-blue-800 mb-2">
+                                            Your middleware would translate requests like this:
+                                        </p>
+                                        <div className="bg-blue-100 rounded p-2 mb-2 font-mono text-xs">
+                                            <div className="mb-1"><strong>Tree Test Suite sends:</strong> GET /studies/study-123</div>
+                                            <div><strong>Middleware translates to:</strong> GET https://api.airtable.com/v0/{'{'}baseId{'}'}/Studies?filterByFormula={'{'}{'{'}id{'}'}{'}'}='study-123'</div>
                                         </div>
-                                        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-                                            <h4 className="font-semibold text-purple-900 mb-2">Netlify Functions</h4>
-                                            <p className="text-sm text-purple-800 mb-2">
-                                                Similar to Vercel, deploy serverless functions as API endpoints.
-                                            </p>
-                                            <ul className="text-xs text-purple-700 space-y-1 list-disc list-inside">
-                                                <li>Free tier available</li>
-                                                <li>Easy deployment</li>
-                                                <li>Setup: Create functions, deploy</li>
-                                            </ul>
-                                        </div>
+                                        <p className="text-xs text-blue-600 italic">
+                                            The middleware receives our format, calls Airtable's API, then returns the response in our expected format.
+                                        </p>
                                     </div>
                                 </div>
 
+                                {/* Code-Based Solutions */}
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Code-Based Solutions</h3>
                                     <div className="space-y-3">
@@ -625,13 +774,15 @@ export function Help() {
                                     </div>
                                 </div>
 
+                                {/* Required Endpoints */}
                                 <div className="rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4">
                                     <h4 className="font-semibold text-blue-900 mb-2">Required API Endpoints</h4>
                                     <p className="text-sm text-blue-800 mb-2">
-                                        Your Custom API must implement these REST endpoints:
+                                        Your Custom API (or middleware) must implement these REST endpoints:
                                     </p>
                                     <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside font-mono">
                                         <li>GET /health - Health check (for connection testing)</li>
+                                        <li>GET /studies - List all studies (for sync functionality)</li>
                                         <li>POST /studies - Create new study</li>
                                         <li>PUT /studies/:id - Update study configuration</li>
                                         <li>GET /studies/:id - Fetch study configuration</li>
@@ -640,7 +791,7 @@ export function Help() {
                                         <li>POST /studies/:id/results - Submit participant results</li>
                                     </ul>
                                     <p className="text-xs text-blue-600 mt-3 italic">
-                                        See the test-server.js file in the project for a complete reference implementation.
+                                        See the <code className="bg-blue-100 px-1 rounded">test-server.js</code> file in the project for a complete reference implementation.
                                     </p>
                                 </div>
                             </div>
