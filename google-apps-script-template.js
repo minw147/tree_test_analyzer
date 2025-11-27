@@ -7,16 +7,21 @@
  * SETUP INSTRUCTIONS:
  * 1. Open your Google Sheet
  * 2. Go to Extensions → Apps Script
- * 3. Delete any existing code
- * 4. Paste this entire script
- * 5. Click Save (Ctrl+S or Cmd+S)
- * 6. Click Deploy → New deployment
+ * 3. Delete ALL existing code (select all and delete)
+ * 4. Paste this entire script (make sure you copy the complete script)
+ * 5. Click Save (Ctrl+S or Cmd+S) - IMPORTANT: Wait for "Saved" confirmation
+ * 6. Click Deploy → New deployment (or Manage deployments → Edit existing)
  * 7. Click the gear icon next to "Select type" and choose "Web app"
  * 8. Set Execute as: Me
  * 9. Set Who has access: Anyone
  * 10. Click Deploy
  * 11. Copy the Web app URL (this is your webhook URL)
  * 12. Paste the URL in the Tree Test Creator Storage configuration
+ * 
+ * TROUBLESHOOTING:
+ * - If you get "function was deleted" error: Make sure you saved the script before deploying
+ * - If updating an existing deployment: Click "Manage deployments" → Edit (pencil icon) → Deploy again
+ * - Always verify the script saved successfully before deploying
  */
 
 // Configuration
