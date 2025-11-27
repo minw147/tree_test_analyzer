@@ -137,12 +137,14 @@ function handleAppendRow(rowData) {
     // If sheet doesn't exist, create it
     if (!sheet) {
       const newSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(SHEET_NAME);
-      setupHeaders(newSheet);
+      // Determine number of tasks from the submitted data
+      const numTasks = getTaskCountFromData(rowData);
+      setupHeaders(newSheet, numTasks);
       return handleAppendRow(rowData); // Retry with new sheet
     }
 
     // Get or create headers
-    const headers = getOrCreateHeaders(sheet);
+    const headers = getOrCreateHeaders(sheet, rowData);
 
     // Build row array in correct order
     const row = [];
@@ -163,19 +165,86 @@ function handleAppendRow(rowData) {
 }
 
 /**
+ * Determine the number of tasks from submitted data
+ */
+function getTaskCountFromData(rowData) {
+  let maxTaskNum = 0;
+  Object.keys(rowData).forEach(key => {
+    const match = key.match(/Task (\d+) Path Taken/);
+    if (match) {
+      const taskNum = parseInt(match[1]);
+      if (taskNum > maxTaskNum) {
+        maxTaskNum = taskNum;
+      }
+    }
+  });
+  // Return at least 1 task, or the maximum found
+  return Math.max(1, maxTaskNum);
+}
+
+/**
  * Get or create headers in the sheet
  */
-function getOrCreateHeaders(sheet) {
+function getOrCreateHeaders(sheet, rowData) {
   const lastRow = sheet.getLastRow();
+  const requiredTasks = getTaskCountFromData(rowData);
   
   // If sheet is empty or first row doesn't look like headers, create headers
   if (lastRow === 0 || !isHeaderRow(sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0])) {
-    setupHeaders(sheet);
+    // Determine number of tasks from the submitted data
+    setupHeaders(sheet, requiredTasks);
+  } else {
+    // Headers exist - check if we need to expand them
+    const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const existingTaskCount = getTaskCountFromHeaders(existingHeaders);
+    
+    // If submitted data has more tasks than existing headers, expand headers
+    if (requiredTasks > existingTaskCount) {
+      // Get base headers (first 5 columns)
+      const baseHeaders = existingHeaders.slice(0, 5);
+      
+      // Add new task headers
+      const newHeaders = [...baseHeaders];
+      for (let i = existingTaskCount + 1; i <= requiredTasks; i++) {
+        newHeaders.push(`Task ${i} Path Taken`);
+        newHeaders.push(`Task ${i} Path Outcome`);
+        newHeaders.push(`Task ${i}: How confident are you with your answer?`);
+        newHeaders.push(`Task ${i} Time`);
+      }
+      
+      // Update header row
+      sheet.getRange(1, 1, 1, newHeaders.length).setValues([newHeaders]);
+      
+      // Re-format header row
+      const headerRange = sheet.getRange(1, 1, 1, newHeaders.length);
+      headerRange.setFontWeight('bold');
+      headerRange.setBackground('#4285f4');
+      headerRange.setFontColor('#ffffff');
+    }
   }
 
   // Return current headers
   const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   return headerRow.filter(h => h !== ''); // Remove empty cells
+}
+
+/**
+ * Determine the number of tasks from existing headers
+ */
+function getTaskCountFromHeaders(headers) {
+  let maxTaskNum = 0;
+  headers.forEach(header => {
+    if (header) {
+      const match = header.toString().match(/Task (\d+) Path Taken/);
+      if (match) {
+        const taskNum = parseInt(match[1]);
+        if (taskNum > maxTaskNum) {
+          maxTaskNum = taskNum;
+        }
+      }
+    }
+  });
+  return maxTaskNum;
 }
 
 /**
@@ -190,8 +259,10 @@ function isHeaderRow(row) {
 /**
  * Setup headers in the sheet
  * This creates all the required columns for analyzer compatibility
+ * @param {Sheet} sheet - The Google Sheet to set up headers for
+ * @param {number} numTasks - Number of tasks in the study (defaults to 20 for backward compatibility)
  */
-function setupHeaders(sheet) {
+function setupHeaders(sheet, numTasks = 20) {
   // Clear existing content if any
   sheet.clear();
   
@@ -204,8 +275,8 @@ function setupHeaders(sheet) {
     'Time Taken'
   ];
 
-  // Add task headers (we'll add up to 20 tasks - adjust if needed)
-  for (let i = 1; i <= 20; i++) {
+  // Add task headers based on actual number of tasks
+  for (let i = 1; i <= numTasks; i++) {
     headers.push(`Task ${i} Path Taken`);
     headers.push(`Task ${i} Path Outcome`);
     headers.push(`Task ${i}: How confident are you with your answer?`);
@@ -271,8 +342,6 @@ function handleSaveConfig(studyId, config) {
  */
 function handleCheckStatus(studyId) {
   try {
-    // For simplicity, we'll check if the study config exists
-    // In a full implementation, you might store status separately
     const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
     
     if (!configSheet) {
@@ -282,9 +351,15 @@ function handleCheckStatus(studyId) {
     const data = configSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === studyId) {
-        // Study exists - default to active
-        // You could extend this to read status from a separate column
-        return { status: 'active' };
+        // Parse the stored config to get the actual status
+        try {
+          const config = JSON.parse(data[i][1]);
+          // Return the accessStatus from the config, default to 'active' if not set
+          return { status: config.accessStatus || 'active' };
+        } catch (parseError) {
+          // If config can't be parsed, default to active
+          return { status: 'active' };
+        }
       }
     }
 
@@ -302,9 +377,36 @@ function handleCheckStatus(studyId) {
  */
 function handleUpdateStatus(studyId, status) {
   try {
-    // For now, we'll just acknowledge the update
-    // In a full implementation, you might store status in the config sheet
-    return { success: true };
+    const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+    
+    if (!configSheet) {
+      return { success: false, error: 'Config sheet not found' };
+    }
+
+    const data = configSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === studyId) {
+        // Parse the existing config
+        try {
+          const config = JSON.parse(data[i][1]);
+          // Update the accessStatus
+          config.accessStatus = status;
+          // Update closedAt timestamp if closing, clear it if reopening
+          if (status === 'closed') {
+            config.closedAt = new Date().toISOString();
+          } else if (status === 'active') {
+            config.closedAt = undefined;
+          }
+          // Save the updated config back to the sheet
+          configSheet.getRange(i + 1, 2).setValue(JSON.stringify(config));
+          return { success: true };
+        } catch (parseError) {
+          return { success: false, error: 'Failed to parse config: ' + parseError.toString() };
+        }
+      }
+    }
+
+    return { success: false, error: 'Study not found' };
   } catch (error) {
     return { 
       success: false, 

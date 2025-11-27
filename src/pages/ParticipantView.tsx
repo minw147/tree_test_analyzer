@@ -264,6 +264,20 @@ export function ParticipantView() {
     }>) => {
         if (!state.study || isSubmitting) return;
 
+        // Check study status before allowing submission
+        try {
+            const adapter = createStorageAdapter(state.study.storage);
+            const statusResult = await adapter.checkStatus(state.study.id);
+            
+            if (statusResult.status === 'closed') {
+                alert('This study is currently closed and not accepting new submissions.');
+                return;
+            }
+        } catch (statusError) {
+            console.warn("Could not check study status, proceeding with submission:", statusError);
+            // Continue with submission if status check fails (for backward compatibility)
+        }
+
         setIsSubmitting(true);
 
         try {
