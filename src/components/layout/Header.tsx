@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Home, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logoImage from "@/assets/logo.png";
 
 export function Header() {
     return (
@@ -8,7 +9,7 @@ export function Header() {
             <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center gap-4">
                     <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                        <img src="/src/assets/logo.png" alt="TreePath Logo" className="h-8 w-8" />
+                        <img src={logoImage} alt="TreePath Logo" className="h-8 w-8" />
                         <span className="text-xl font-bold text-gray-900">TreePath</span>
                     </Link>
                 </div>
