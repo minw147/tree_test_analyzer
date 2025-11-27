@@ -38,10 +38,24 @@ function createResponse(data) {
 
 /**
  * Main doPost function - handles incoming webhook requests
+ * Supports both JSON and form-encoded data to avoid CORS preflight issues
  */
 function doPost(e) {
   try {
-    const requestData = JSON.parse(e.postData.contents);
+    let requestData;
+    
+    // Handle form-encoded data (to avoid CORS preflight)
+    if (e.parameter && e.parameter.payload) {
+      requestData = JSON.parse(e.parameter.payload);
+    } 
+    // Handle JSON data (fallback for direct JSON requests)
+    else if (e.postData && e.postData.contents) {
+      requestData = JSON.parse(e.postData.contents);
+    } 
+    else {
+      throw new Error('No data received');
+    }
+
     const action = requestData.action;
 
     let result;

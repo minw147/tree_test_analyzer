@@ -58,15 +58,19 @@ export class GoogleSheetsAppsScriptAdapter implements StorageAdapter {
         try {
             const rowData = this.formatResultForSheet(result);
 
+            // Use form-encoded data to avoid CORS preflight issues with Google Apps Script
+            const formData = new URLSearchParams();
+            formData.append('payload', JSON.stringify({
+                action: 'appendRow',
+                data: rowData,
+            }));
+
             const response = await fetch(this.config.webhookUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({
-                    action: 'appendRow',
-                    data: rowData,
-                }),
+                body: formData.toString(),
             });
 
             if (!response.ok) {
@@ -87,16 +91,20 @@ export class GoogleSheetsAppsScriptAdapter implements StorageAdapter {
         }
 
         try {
+            // Use form-encoded data to avoid CORS preflight issues with Google Apps Script
+            const formData = new URLSearchParams();
+            formData.append('payload', JSON.stringify({
+                action: 'saveConfig',
+                studyId: config.id,
+                config: config,
+            }));
+
             const response = await fetch(this.config.webhookUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({
-                    action: 'saveConfig',
-                    studyId: config.id,
-                    config: config,
-                }),
+                body: formData.toString(),
             });
 
             if (!response.ok) {
@@ -117,15 +125,19 @@ export class GoogleSheetsAppsScriptAdapter implements StorageAdapter {
         }
 
         try {
+            // Use form-encoded data to avoid CORS preflight issues with Google Apps Script
+            const formData = new URLSearchParams();
+            formData.append('payload', JSON.stringify({
+                action: 'checkStatus',
+                studyId: studyId,
+            }));
+
             const response = await fetch(this.config.webhookUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({
-                    action: 'checkStatus',
-                    studyId: studyId,
-                }),
+                body: formData.toString(),
             });
 
             if (!response.ok) {
@@ -145,16 +157,20 @@ export class GoogleSheetsAppsScriptAdapter implements StorageAdapter {
         }
 
         try {
+            // Use form-encoded data to avoid CORS preflight issues with Google Apps Script
+            const formData = new URLSearchParams();
+            formData.append('payload', JSON.stringify({
+                action: 'updateStatus',
+                studyId: studyId,
+                status: status,
+            }));
+
             const response = await fetch(this.config.webhookUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({
-                    action: 'updateStatus',
-                    studyId: studyId,
-                    status: status,
-                }),
+                body: formData.toString(),
             });
 
             if (!response.ok) {
@@ -174,15 +190,19 @@ export class GoogleSheetsAppsScriptAdapter implements StorageAdapter {
         }
 
         try {
+            // Use form-encoded data to avoid CORS preflight issues with Google Apps Script
+            const formData = new URLSearchParams();
+            formData.append('payload', JSON.stringify({
+                action: 'fetchConfig',
+                studyId: studyId,
+            }));
+
             const response = await fetch(this.config.webhookUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({
-                    action: 'fetchConfig',
-                    studyId: studyId,
-                }),
+                body: formData.toString(),
             });
 
             if (!response.ok) {
@@ -202,14 +222,18 @@ export class GoogleSheetsAppsScriptAdapter implements StorageAdapter {
         }
 
         try {
+            // Use form-encoded data to avoid CORS preflight issues with Google Apps Script
+            const formData = new URLSearchParams();
+            formData.append('payload', JSON.stringify({
+                action: 'test',
+            }));
+
             const response = await fetch(this.config.webhookUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({
-                    action: 'test',
-                }),
+                body: formData.toString(),
             });
 
             if (!response.ok) {
