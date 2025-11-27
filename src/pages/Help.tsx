@@ -342,6 +342,116 @@ export function Help() {
                                             The Apps Script automatically creates the correct column headers and appends participant results as new rows.
                                         </p>
                                     </div>
+                                    
+                                    <div className="mt-4 rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4">
+                                        <h4 className="font-semibold text-blue-900 mb-2">Using Multiple Studies with Google Sheets</h4>
+                                        <p className="text-sm text-blue-800 mb-3">
+                                            You can use the same Google Sheet and webhook URL for multiple studies, or use separate sheets for each study.
+                                        </p>
+                                        
+                                        <div className="space-y-3">
+                                            <div className="bg-white rounded p-3 border border-blue-200">
+                                                <h5 className="font-semibold text-blue-900 mb-1 text-sm">Option 1: Same Sheet, Same Webhook URL</h5>
+                                                <p className="text-xs text-blue-800 mb-2">
+                                                    <strong>Use this when:</strong> You want all studies to write to the same Google Sheet.
+                                                </p>
+                                                <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                                    <li>Install the Apps Script once in your Google Sheet</li>
+                                                    <li>Deploy it and get the webhook URL</li>
+                                                    <li>Use the <strong>same webhook URL</strong> for all studies that should use this sheet</li>
+                                                    <li>All results will append to the same <code className="bg-blue-100 px-1 rounded">Results</code> tab</li>
+                                                    <li>Each study's configuration is stored separately in the <code className="bg-blue-100 px-1 rounded">StudyConfigs</code> tab</li>
+                                                </ul>
+                                                <p className="text-xs text-blue-600 mt-2 italic">
+                                                    Note: Results from different studies will be mixed together in the same tab. Each row contains participant data but not the study ID/name (this may be added in a future update).
+                                                </p>
+                                            </div>
+                                            
+                                            <div className="bg-white rounded p-3 border border-blue-200">
+                                                <h5 className="font-semibold text-blue-900 mb-1 text-sm">Option 2: Different Sheets, Different Webhook URLs</h5>
+                                                <p className="text-xs text-blue-800 mb-2">
+                                                    <strong>Use this when:</strong> You want each study to write to its own separate Google Sheet.
+                                                </p>
+                                                <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                                    <li>Create a separate Google Sheet for each study (or group of studies)</li>
+                                                    <li>Install the Apps Script in each sheet separately</li>
+                                                    <li>Deploy each script and get its unique webhook URL</li>
+                                                    <li>Configure each study with its corresponding webhook URL</li>
+                                                    <li>Results will be isolated in their respective sheets</li>
+                                                </ul>
+                                                <p className="text-xs text-blue-600 mt-2 italic">
+                                                    Each Google Sheet deployment generates a unique webhook URL, so you can easily separate studies by using different sheets.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                                            <p className="text-xs text-yellow-800 font-semibold mb-1">💡 Quick Summary:</p>
+                                            <ul className="text-xs text-yellow-700 space-y-0.5 list-disc list-inside">
+                                                <li><strong>Same webhook URL</strong> = All studies write to the same sheet (results mixed together)</li>
+                                                <li><strong>Different webhook URLs</strong> = Each study writes to its own sheet (results isolated)</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-4 rounded-lg border-l-4 border-purple-500 bg-purple-50 p-4">
+                                        <h4 className="font-semibold text-purple-900 mb-2">Managing Study Status in Google Sheets</h4>
+                                        <p className="text-sm text-purple-800 mb-3">
+                                            If you need to close or reopen a study but don't have access to the Tree Test Creator (e.g., your computer is off or you're on a different device), you can manually edit the study configuration directly in Google Sheets.
+                                        </p>
+                                        
+                                        <div className="bg-white rounded p-3 border border-purple-200 mb-3">
+                                            <h5 className="font-semibold text-purple-900 mb-2 text-sm">How to Close/Reopen a Study Manually:</h5>
+                                            <ol className="text-xs text-purple-800 space-y-2 list-decimal list-inside">
+                                                <li><strong>Open your Google Sheet</strong> (the one with the Apps Script installed)</li>
+                                                <li><strong>Go to the <code className="bg-purple-100 px-1 rounded">StudyConfigs</code> tab</strong></li>
+                                                <li><strong>Find your study:</strong>
+                                                    <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                        <li>Column A contains the Study ID (e.g., <code className="bg-purple-100 px-1 rounded">study-1234567890-abc123</code>)</li>
+                                                        <li>Column B contains the JSON configuration</li>
+                                                    </ul>
+                                                </li>
+                                                <li><strong>Edit the JSON in Column B:</strong>
+                                                    <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                        <li>Find the <code className="bg-purple-100 px-1 rounded">"accessStatus"</code> field</li>
+                                                        <li>To <strong>close</strong> the study: Change it to <code className="bg-purple-100 px-1 rounded">"closed"</code></li>
+                                                        <li>To <strong>reopen</strong> the study: Change it to <code className="bg-purple-100 px-1 rounded">"active"</code></li>
+                                                        <li>Optionally add/update <code className="bg-purple-100 px-1 rounded">"closedAt"</code> with a timestamp when closing (e.g., <code className="bg-purple-100 px-1 rounded">"closedAt": "2025-01-15T10:30:00.000Z"</code>)</li>
+                                                    </ul>
+                                                </li>
+                                                <li><strong>Save the changes</strong> in Google Sheets</li>
+                                            </ol>
+                                        </div>
+                                        
+                                        <div className="bg-white rounded p-3 border border-purple-200">
+                                            <h5 className="font-semibold text-purple-900 mb-2 text-sm">Example JSON Edit:</h5>
+                                            <div className="space-y-2">
+                                                <div>
+                                                    <p className="text-xs text-purple-700 mb-1"><strong>Before (Active):</strong></p>
+                                                    <pre className="text-xs bg-purple-100 p-2 rounded border border-purple-200 overflow-x-auto">{`{
+  "id": "study-1234567890-abc123",
+  "name": "My Study",
+  "accessStatus": "active",
+  ...
+}`}</pre>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-purple-700 mb-1"><strong>After (Closed):</strong></p>
+                                                    <pre className="text-xs bg-purple-100 p-2 rounded border border-purple-200 overflow-x-auto">{`{
+  "id": "study-1234567890-abc123",
+  "name": "My Study",
+  "accessStatus": "closed",
+  "closedAt": "2025-01-15T10:30:00.000Z",
+  ...
+}`}</pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <p className="text-xs text-purple-600 mt-3 italic">
+                                            ⚠️ <strong>Important:</strong> Make sure the JSON is valid after editing. Invalid JSON will cause errors. The study status change takes effect immediately - participants trying to access a closed study will see a "Study Closed" message.
+                                        </p>
+                                    </div>
                                 </div>
 
                                 <div>

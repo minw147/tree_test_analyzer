@@ -28,6 +28,7 @@ function App() {
           <Route path="/analyze" element={<Analyzer />} />
           <Route path="/analyze/:studyId" element={<Analyzer />} />
           <Route path="/create" element={<Creator />} />
+          <Route path="/create/:studyId" element={<Creator />} />
           <Route path="/help" element={<Help />} />
         </Route>
         <Route path="/test/:studyId" element={<ParticipantView />} />

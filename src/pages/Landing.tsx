@@ -6,26 +6,27 @@ import { Button } from "@/components/ui/button";
 import type { StudyConfig } from "@/lib/types/study";
 import type { UploadedData } from "@/lib/types";
 
-const STORAGE_KEY_STUDY = "tree-test-study-config";
+const STORAGE_KEY_STUDIES = "tree-test-studies";
 const STORAGE_KEY_ANALYZER_STUDIES = "tree-test-analyzer-studies";
 
 export function Landing() {
     const navigate = useNavigate();
     const location = useLocation();
-    const [savedStudy, setSavedStudy] = useState<StudyConfig | null>(null);
+    const [savedStudies, setSavedStudies] = useState<StudyConfig[]>([]);
     const [savedAnalyses, setSavedAnalyses] = useState<UploadedData[]>([]);
     const [showStorageTooltip, setShowStorageTooltip] = useState(false);
 
-    const loadStudy = () => {
+    const loadStudies = () => {
         try {
-            const studyJson = localStorage.getItem(STORAGE_KEY_STUDY);
-            if (studyJson) {
-                setSavedStudy(JSON.parse(studyJson));
+            const studiesJson = localStorage.getItem(STORAGE_KEY_STUDIES);
+            if (studiesJson) {
+                setSavedStudies(JSON.parse(studiesJson));
             } else {
-                setSavedStudy(null);
+                setSavedStudies([]);
             }
         } catch (e) {
-            console.error("Failed to load saved study", e);
+            console.error("Failed to load saved studies", e);
+            setSavedStudies([]);
         }
     };
 
@@ -41,13 +42,13 @@ export function Landing() {
     };
 
     useEffect(() => {
-        loadStudy();
+        loadStudies();
         loadAnalyses();
 
         // Listen for storage changes to update when study status changes
         const handleStorageChange = (e: StorageEvent) => {
-            if (e.key === STORAGE_KEY_STUDY) {
-                loadStudy();
+            if (e.key === STORAGE_KEY_STUDIES) {
+                loadStudies();
             }
             if (e.key === STORAGE_KEY_ANALYZER_STUDIES) {
                 loadAnalyses();
@@ -58,7 +59,7 @@ export function Landing() {
 
         // Also check on focus in case changes were made in another tab
         const handleFocus = () => {
-            loadStudy();
+            loadStudies();
             loadAnalyses();
         };
         window.addEventListener('focus', handleFocus);
@@ -71,16 +72,17 @@ export function Landing() {
 
     // Refresh when navigating back to this page
     useEffect(() => {
-        loadStudy();
+        loadStudies();
         loadAnalyses();
     }, [location.pathname]);
 
-    const handleDeleteStudy = (e: React.MouseEvent) => {
+    const handleDeleteStudy = (e: React.MouseEvent, studyId: string) => {
         e.preventDefault();
         e.stopPropagation();
-        if (confirm("Are you sure you want to delete this draft? This cannot be undone.")) {
-            localStorage.removeItem(STORAGE_KEY_STUDY);
-            setSavedStudy(null);
+        if (confirm("Are you sure you want to delete this study? This cannot be undone.")) {
+            const updated = savedStudies.filter(s => s.id !== studyId);
+            setSavedStudies(updated);
+            localStorage.setItem(STORAGE_KEY_STUDIES, JSON.stringify(updated));
         }
     };
 
@@ -114,7 +116,7 @@ export function Landing() {
                         </Button>
                         <Button
                             className="gap-2 whitespace-nowrap min-w-[140px]"
-                            onClick={() => navigate("/create")}
+                            onClick={() => navigate("/create?new=true")}
                         >
                             <Plus className="w-4 h-4" />
                             New Study
@@ -146,21 +148,21 @@ export function Landing() {
                         </div>
                     </div>
 
-                    {!savedStudy && savedAnalyses.length === 0 ? (
+                    {savedStudies.length === 0 && savedAnalyses.length === 0 ? (
                         <div className="text-center py-12 bg-white rounded-lg border border-dashed border-gray-300">
                             <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                                 <FileEdit className="w-6 h-6 text-gray-400" />
                             </div>
                             <h3 className="text-lg font-medium text-gray-900">No studies yet</h3>
                             <p className="text-gray-500 mt-1 mb-6">Get started by creating a new study or importing data.</p>
-                            <Button onClick={() => navigate("/create")}>
+                            <Button onClick={() => navigate("/create?new=true")}>
                                 Create First Study
                             </Button>
                         </div>
                     ) : (
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {/* Saved Draft Study */}
-                            {savedStudy && (() => {
+                            {/* Saved Studies */}
+                            {savedStudies.map((savedStudy) => {
                                 // Determine display status - show Closed if closed, otherwise Published or Draft
                                 const displayStatus = savedStudy.accessStatus === 'closed' 
                                     ? 'closed' 
@@ -192,7 +194,7 @@ export function Landing() {
                                 const config = statusConfig[displayStatus];
                                 
                                 return (
-                                    <Card className="group hover:shadow-md transition-shadow relative overflow-hidden">
+                                    <Card key={savedStudy.id} className="group hover:shadow-md transition-shadow relative overflow-hidden">
                                         <div className={`absolute top-0 left-0 w-1 h-full ${config.border}`} />
                                         <CardHeader className="pb-3">
                                             <div className="flex justify-between items-start">
@@ -228,7 +230,7 @@ export function Landing() {
                                                     <Button
                                                         variant="default"
                                                         className="flex-1"
-                                                        onClick={() => navigate("/create")}
+                                                        onClick={() => navigate(`/create/${savedStudy.id}`)}
                                                     >
                                                         <FileEdit className="w-4 h-4 mr-2" />
                                                         {displayStatus === 'draft' ? 'Continue Editing' : 'Edit Study'}
@@ -237,7 +239,7 @@ export function Landing() {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="text-gray-400 hover:text-red-600"
-                                                        onClick={handleDeleteStudy}
+                                                        onClick={(e) => handleDeleteStudy(e, savedStudy.id)}
                                                         title="Delete Study"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
@@ -247,7 +249,7 @@ export function Landing() {
                                         </CardContent>
                                     </Card>
                                 );
-                            })()}
+                            })}
 
                             {/* Saved Analyses */}
                             {savedAnalyses.map((analysis) => (

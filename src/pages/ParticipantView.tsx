@@ -106,18 +106,20 @@ export function ParticipantView() {
                 }
             }
 
-            // Try to fetch from localStorage
-            const storedStudy = localStorage.getItem("tree-test-study-config");
-            if (storedStudy) {
+            // Try to fetch from localStorage (new array structure)
+            const storedStudiesJson = localStorage.getItem("tree-test-studies");
+            if (storedStudiesJson) {
                 try {
-                    const parsed = JSON.parse(storedStudy);
-                    console.log("Found stored study, ID:", parsed.id, "Looking for:", id);
+                    const storedStudies: StudyConfig[] = JSON.parse(storedStudiesJson);
+                    const parsed = storedStudies.find(s => s.id === id);
+                    console.log("Found stored studies, looking for ID:", id);
                     
-                    if (parsed.id === id) {
+                    if (parsed) {
                         console.log("Study ID matches!");
                         
                         // Check status FIRST - before any other checks
-                        if (parsed.accessStatus === 'closed') {
+                        const isStudyClosed = parsed.accessStatus === 'closed';
+                        if (isStudyClosed) {
                             setState({
                                 study: null,
                                 loadingState: 'closed',
@@ -135,8 +137,8 @@ export function ParticipantView() {
                         // For local-download or when storage is not configured, check status first
                         if (!parsed.storage || parsed.storage.type === 'local-download') {
                             console.log("Using local config (local-download storage)");
-                            // Check status from in-memory config first
-                            if (parsed.accessStatus === 'closed') {
+                            // Check status from in-memory config first (already checked above, but double-check)
+                            if (isStudyClosed) {
                                 setState({
                                     study: null,
                                     loadingState: 'closed',
@@ -194,7 +196,7 @@ export function ParticipantView() {
                         } catch (fetchError) {
                             console.error("Failed to fetch from storage:", fetchError);
                             // Fall back to local config if fetch fails, but check status first
-                            if (parsed.accessStatus === 'closed') {
+                            if (isStudyClosed) {
                                 setState({
                                     study: null,
                                     loadingState: 'closed',
@@ -206,7 +208,7 @@ export function ParticipantView() {
                         
                         // Use local config as fallback, but check status first
                         console.log("Using local config as fallback");
-                        if (parsed.accessStatus === 'closed') {
+                        if (isStudyClosed) {
                             setState({
                                 study: null,
                                 loadingState: 'closed',
@@ -220,8 +222,6 @@ export function ParticipantView() {
                             errorMessage: null,
                         });
                         return;
-                    } else {
-                        console.log("Study ID mismatch. Stored:", parsed.id, "Requested:", id);
                     }
                 } catch (error) {
                     console.error("Failed to parse stored study:", error);

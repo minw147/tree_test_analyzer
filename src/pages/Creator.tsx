@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams, useParams, useNavigate } from "react-router-dom";
 import { Network, ClipboardList, Settings, Database, Share2, Eye, ExternalLink, Edit2 } from "lucide-react";
 import type { StudyConfig } from "@/lib/types/study";
 import { generateStudyId } from "@/lib/utils/id-generator";
@@ -16,7 +17,7 @@ import { createStorageAdapter } from "@/lib/storage/factory";
 
 type TabType = "tree" | "tasks" | "settings" | "preview" | "storage" | "export";
 
-const STORAGE_KEY_STUDY = "tree-test-study-config";
+const STORAGE_KEY_STUDIES = "tree-test-studies";
 
 // Helper function to get default study
 const getDefaultStudy = (): StudyConfig => ({
@@ -39,43 +40,163 @@ const getDefaultStudy = (): StudyConfig => ({
     updatedAt: new Date().toISOString(),
 });
 
-// Load from localStorage on mount
-const loadStudyFromStorage = (): StudyConfig => {
+// Migrate from old single-study format to new array format
+const migrateOldStorage = (): StudyConfig[] => {
     try {
-        const saved = localStorage.getItem(STORAGE_KEY_STUDY);
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            return {
-                ...getDefaultStudy(),
-                ...parsed,
-                status: parsed.status || "draft",
-                accessStatus: parsed.accessStatus || "active",
-                createdAt: parsed.createdAt || new Date().toISOString(),
-                updatedAt: parsed.updatedAt || new Date().toISOString(),
-            };
+        const oldKey = "tree-test-study-config";
+        const oldStudy = localStorage.getItem(oldKey);
+        if (oldStudy) {
+            const parsed = JSON.parse(oldStudy);
+            // Convert to array format
+            const studies = [parsed];
+            saveStudiesToStorage(studies);
+            // Remove old key
+            localStorage.removeItem(oldKey);
+            console.log("Migrated old study format to new array format");
+            return studies;
         }
     } catch (error) {
-        console.error("Failed to load study from localStorage:", error);
+        console.error("Failed to migrate old storage:", error);
     }
-    return getDefaultStudy();
+    return [];
+};
+
+// Load all studies from localStorage
+const loadStudiesFromStorage = (): StudyConfig[] => {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY_STUDIES);
+        if (saved) {
+            return JSON.parse(saved);
+        } else {
+            // Try to migrate from old format
+            return migrateOldStorage();
+        }
+    } catch (error) {
+        console.error("Failed to load studies from localStorage:", error);
+        // Try to migrate from old format
+        return migrateOldStorage();
+    }
+};
+
+// Save all studies to localStorage
+const saveStudiesToStorage = (studies: StudyConfig[]) => {
+    try {
+        localStorage.setItem(STORAGE_KEY_STUDIES, JSON.stringify(studies));
+    } catch (error) {
+        console.error("Failed to save studies to localStorage:", error);
+    }
+};
+
+// Load a specific study by ID
+const loadStudyById = (studyId: string | undefined): StudyConfig | null => {
+    if (!studyId) return null;
+    const studies = loadStudiesFromStorage();
+    return studies.find(s => s.id === studyId) || null;
 };
 
 export function Creator() {
+    const { studyId: urlStudyId } = useParams<{ studyId?: string }>();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const isNewStudy = searchParams.get('new') === 'true';
+    
     const [activeTab, setActiveTab] = useState<TabType>("tree");
     const [editingName, setEditingName] = useState(false);
     const [editingCreator, setEditingCreator] = useState(false);
-    const [study, setStudy] = useState<StudyConfig>(loadStudyFromStorage());
+    const [study, setStudy] = useState<StudyConfig | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
-    // Save to localStorage whenever study changes
+    // Track if this is the initial mount to prevent immediate save on new study creation
+    const isInitialMount = useRef(true);
+    // Track the study ID we just created to prevent double-creation
+    const justCreatedStudyId = useRef<string | null>(null);
+
+    // Load study on mount or when studyId changes
     useEffect(() => {
-        try {
-            localStorage.setItem(STORAGE_KEY_STUDY, JSON.stringify(study));
-        } catch (error) {
-            console.error("Failed to save study to localStorage:", error);
+        if (isNewStudy) {
+            // Creating a new study
+            const newStudy = getDefaultStudy();
+            justCreatedStudyId.current = newStudy.id;
+            setStudy(newStudy);
+            // Remove the query parameter from URL
+            setSearchParams({}, { replace: true });
+            // Update URL to include the new study ID
+            navigate(`/create/${newStudy.id}`, { replace: true });
+            return; // Exit early - don't process urlStudyId change that will happen next
         }
-    }, [study]);
+
+        // If we just created this study, don't try to load it again (it's already set)
+        if (justCreatedStudyId.current === urlStudyId) {
+            return;
+        }
+
+        if (urlStudyId) {
+            // Loading existing study by ID
+            const loadedStudy = loadStudyById(urlStudyId);
+            if (loadedStudy) {
+                setStudy(loadedStudy);
+                justCreatedStudyId.current = null; // Clear the flag since we loaded an existing study
+            } else {
+                // Study not found - only create new if we didn't just create it
+                if (justCreatedStudyId.current !== urlStudyId) {
+                    console.warn(`Study ${urlStudyId} not found, creating new study`);
+                    const newStudy = getDefaultStudy();
+                    justCreatedStudyId.current = newStudy.id;
+                    setStudy(newStudy);
+                    navigate(`/create/${newStudy.id}`, { replace: true });
+                }
+            }
+        } else {
+            // No study ID and not creating new - load first study or create new
+            const studies = loadStudiesFromStorage();
+            if (studies.length > 0) {
+                // Load the most recently updated study
+                const latestStudy = studies.sort((a, b) => 
+                    new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+                )[0];
+                setStudy(latestStudy);
+                justCreatedStudyId.current = null; // Clear the flag
+                navigate(`/create/${latestStudy.id}`, { replace: true });
+            } else {
+                // No studies exist, create a new one
+                const newStudy = getDefaultStudy();
+                justCreatedStudyId.current = newStudy.id;
+                setStudy(newStudy);
+                navigate(`/create/${newStudy.id}`, { replace: true });
+            }
+        }
+    }, [urlStudyId, isNewStudy, navigate, setSearchParams]);
+
+    // Save to localStorage whenever study changes (but skip initial mount for new studies)
+    useEffect(() => {
+        if (!study) return;
+
+        // Skip save on initial mount if creating a new study (to prevent overwriting)
+        if (isInitialMount.current && isNewStudy) {
+            isInitialMount.current = false;
+            return;
+        }
+        isInitialMount.current = false;
+
+        // Update study in array
+        const studies = loadStudiesFromStorage();
+        const existingIndex = studies.findIndex(s => s.id === study.id);
+        
+        if (existingIndex >= 0) {
+            // Update existing study
+            studies[existingIndex] = { ...study, updatedAt: new Date().toISOString() };
+        } else {
+            // Add new study
+            studies.push({ ...study, updatedAt: new Date().toISOString() });
+        }
+        
+        saveStudiesToStorage(studies);
+        // Clear the just-created flag after saving, so future loads work normally
+        if (justCreatedStudyId.current === study.id) {
+            justCreatedStudyId.current = null;
+        }
+    }, [study, isNewStudy]);
 
     const tabs = [
         { id: "tree" as TabType, name: "Tree Structure", icon: Network },
@@ -87,6 +208,7 @@ export function Creator() {
     ];
 
     const handleOpenPreview = () => {
+        if (!study) return;
         // Store study config in sessionStorage for preview
         sessionStorage.setItem("previewStudy", JSON.stringify(study));
         // Open preview in new tab
@@ -95,6 +217,18 @@ export function Creator() {
             alert("Please allow pop-ups to open the preview in a new tab.");
         }
     };
+
+    // Show loading state while study is being loaded
+    if (!study) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+                    <p className="text-gray-600">Loading study...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -607,38 +741,39 @@ export function Creator() {
                                                         Share this link with participants to take your tree test.
                                                     </p>
                                                     <div className="space-y-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <Input
-                                                                readOnly
-                                                                value={`${window.location.origin}/test/${study.id}`}
-                                                                className="font-mono text-sm"
-                                                            />
-                                                            <Button
-                                                                variant="outline"
-                                                                onClick={() => {
-                                                                    navigator.clipboard.writeText(`${window.location.origin}/test/${study.id}`);
-                                                                }}
-                                                            >
-                                                                Copy Link
-                                                            </Button>
-                                                        </div>
-                                                        {/* Add webhook URL parameter for Google Sheets cross-device access */}
-                                                        {study.storage?.type === 'google-sheets' && study.storage?.webhookUrl && (
+                                                        {/* For Google Sheets: Show cross-device link (more reliable) */}
+                                                        {study.storage?.type === 'google-sheets' && study.storage?.webhookUrl ? (
                                                             <div className="flex items-center gap-2">
                                                                 <Input
                                                                     readOnly
                                                                     value={`${window.location.origin}/test/${study.id}?webhook=${encodeURIComponent(study.storage.webhookUrl || '')}`}
-                                                                    className="font-mono text-xs"
-                                                                    title="Cross-device link (includes webhook URL for Google Sheets)"
+                                                                    className="font-mono text-sm"
+                                                                    title="Cross-device link (works from any device, includes webhook URL for Google Sheets)"
                                                                 />
                                                                 <Button
                                                                     variant="outline"
-                                                                    size="sm"
                                                                     onClick={() => {
                                                                         navigator.clipboard.writeText(`${window.location.origin}/test/${study.id}?webhook=${encodeURIComponent(study.storage.webhookUrl || '')}`);
                                                                     }}
                                                                 >
-                                                                    Copy Cross-Device Link
+                                                                    Copy Link
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            /* For other storage types: Show standard link */
+                                                            <div className="flex items-center gap-2">
+                                                                <Input
+                                                                    readOnly
+                                                                    value={`${window.location.origin}/test/${study.id}`}
+                                                                    className="font-mono text-sm"
+                                                                />
+                                                                <Button
+                                                                    variant="outline"
+                                                                    onClick={() => {
+                                                                        navigator.clipboard.writeText(`${window.location.origin}/test/${study.id}`);
+                                                                    }}
+                                                                >
+                                                                    Copy Link
                                                                 </Button>
                                                             </div>
                                                         )}
