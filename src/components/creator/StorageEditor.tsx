@@ -35,7 +35,7 @@ export function StorageEditor({ config, onChange }: StorageEditorProps) {
                 // Only populate if current config is completely empty
                 const isEmpty = !config.endpointUrl && !config.authType && !config.apiKey;
                 if (isEmpty) {
-                    onChange({
+        onChange({
                         ...config,
                         endpointUrl: globalConfig.endpointUrl,
                         authType: globalConfig.authType,
@@ -1237,7 +1237,7 @@ function handleFetchResults(studyId) {
                                         }}
                                     >
                                         Save as Default
-                                    </Button>
+                                </Button>
                                 )}
                             </div>
                         </div>
