@@ -406,6 +406,8 @@ export class CustomApiAdapter implements StorageAdapter {
         }
 
         try {
+            const isSupabase = this.config.endpointUrl.includes('supabase.co');
+            
             const response = await fetch(`${this.config.endpointUrl}/studies`, {
                 method: 'GET',
                 headers: this.getHeaders(),
@@ -416,17 +418,30 @@ export class CustomApiAdapter implements StorageAdapter {
                 throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
             }
 
-            const studies = await response.json();
+            const data = await response.json();
             
-            // Ensure we return an array
-            if (Array.isArray(studies)) {
-                return { studies };
-            } else {
-                // Some APIs might return { studies: [...] } format
-                if (studies.studies && Array.isArray(studies.studies)) {
-                    return { studies: studies.studies };
+            if (isSupabase) {
+                // For Supabase, data is an array of rows, each with a 'config' JSONB column
+                if (Array.isArray(data)) {
+                    // Extract the config from each row
+                    const studies = data
+                        .map((row: any) => row.config)
+                        .filter((config: any) => config !== null && config !== undefined);
+                    return { studies };
+                } else {
+                    return { studies: null, error: "Invalid response format: expected array of study rows" };
                 }
-                return { studies: null, error: "Invalid response format: expected array of studies" };
+            } else {
+                // For other APIs, expect array of StudyConfig or { studies: [...] }
+                if (Array.isArray(data)) {
+                    return { studies: data };
+                } else {
+                    // Some APIs might return { studies: [...] } format
+                    if (data.studies && Array.isArray(data.studies)) {
+                        return { studies: data.studies };
+                    }
+                    return { studies: null, error: "Invalid response format: expected array of studies" };
+                }
             }
         } catch (error) {
             console.error("Failed to fetch all studies from custom API:", error);

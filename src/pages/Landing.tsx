@@ -158,7 +158,16 @@ export function Landing() {
             let addedCount = 0;
             const mergedStudies = [...localStudies];
 
-            result.studies.forEach(apiStudy => {
+            // Ensure result.studies is an array
+            const apiStudies = Array.isArray(result.studies) ? result.studies : [];
+            
+            apiStudies.forEach(apiStudy => {
+                // Ensure apiStudy has required properties
+                if (!apiStudy || !apiStudy.id) {
+                    console.warn("Skipping invalid study from API:", apiStudy);
+                    return;
+                }
+                
                 if (!localStudyMap.has(apiStudy.id)) {
                     mergedStudies.push(apiStudy);
                     addedCount++;
