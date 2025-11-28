@@ -41,4 +41,11 @@ export interface StorageAdapter {
      * Used for syncing studies from remote storage.
      */
     fetchAllStudies?(): Promise<{ studies: StudyConfig[] | null; error?: string }>;
+
+    /**
+     * Fetch all participant results for a study.
+     * Optional method - only implemented by adapters that can fetch historical results.
+     * Used for importing study data into the Analyzer.
+     */
+    fetchResults?(studyId: string): Promise<{ results: ParticipantResult[] | null; error?: string }>;
 }

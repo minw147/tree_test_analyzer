@@ -120,7 +120,80 @@ export function PietreeTab({ data }: PietreeTabProps) {
         }
 
         // Expected path set for quick lookup
-        const expectedPaths = (selectedTask.expectedAnswer || "").split(",").map(p => p.trim().toLowerCase());
+        // Normalize: remove leading/trailing slashes and convert to lowercase
+        const expectedPaths = (selectedTask.expectedAnswer || "")
+            .split(",")
+            .map(p => p.trim().replace(/^\/+|\/+$/g, '').toLowerCase())
+            .filter(p => p.length > 0);
+
+        // Helper function to check if a path is correct
+        // A path is correct if it's a prefix, suffix, or consecutive segment of any expected path
+        const isPathCorrect = (currentPath: string): boolean => {
+            // Normalize: remove leading/trailing slashes and convert to lowercase
+            const normalizedCurrent = currentPath.replace(/^\/+|\/+$/g, '').toLowerCase();
+            if (!normalizedCurrent) return false;
+            
+            // Split into segments for segment matching
+            const currentSegments = normalizedCurrent.split('/').filter(Boolean);
+            if (currentSegments.length === 0) return false;
+            
+            const result = expectedPaths.some(expectedPath => {
+                // Normalize expected path: remove leading/trailing slashes and convert to lowercase
+                const normalizedExpected = expectedPath.replace(/^\/+|\/+$/g, '').toLowerCase();
+                if (!normalizedExpected) return false;
+                
+                const expectedSegments = normalizedExpected.split('/').filter(Boolean);
+                if (expectedSegments.length === 0) return false;
+                
+                // Check if expected path starts with current path (prefix match)
+                // e.g., "products" in "products/books/non-fiction"
+                // e.g., "products/books" in "products/books/non-fiction"
+                if (normalizedExpected.startsWith(normalizedCurrent)) {
+                    // If they're exactly equal, it's correct
+                    if (normalizedExpected === normalizedCurrent) {
+                        return true;
+                    }
+                    // If expected path continues, ensure current path ends at a segment boundary
+                    // (i.e., the next character should be '/')
+                    // This ensures "products" matches "products/books" but "product" doesn't match "products"
+                    const nextChar = normalizedExpected[normalizedCurrent.length];
+                    if (nextChar === '/') {
+                        return true;
+                    }
+                    // If no next character, they're equal (already handled above, but safe check)
+                    if (!nextChar) {
+                        return true;
+                    }
+                }
+                
+                // Check if expected path ends with current path (suffix match)
+                // e.g., "non-fiction" in "products/books/non-fiction"
+                if (normalizedExpected.endsWith(normalizedCurrent)) {
+                    // Ensure it's a complete segment match (not partial word)
+                    const prevChar = normalizedExpected[normalizedExpected.length - normalizedCurrent.length - 1];
+                    if (!prevChar || prevChar === '/') {
+                        return true;
+                    }
+                }
+                
+                // Check if current segments appear consecutively in expected segments
+                // e.g., "books/non-fiction" in "products/books/non-fiction"
+                // This handles cases where the current path is a middle segment of the expected path
+                if (currentSegments.length > 0 && currentSegments.length <= expectedSegments.length) {
+                    for (let i = 0; i <= expectedSegments.length - currentSegments.length; i++) {
+                        const segmentMatch = currentSegments.every((seg, idx) => 
+                            expectedSegments[i + idx] === seg
+                        );
+                        if (segmentMatch) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+            
+            return result;
+        };
 
         // Process each participant
         data.participants.forEach(p => {
@@ -171,7 +244,11 @@ export function PietreeTab({ data }: PietreeTabProps) {
                         prevNode.stats.back++;
                     } else {
                         // Forward move
-                        const isCorrectStep = expectedPaths.some(p => p.startsWith(nextPath.toLowerCase()));
+                        // Check if the SEGMENT (prevNode -> node) is correct, not just the full path
+                        // This allows "Books/Non-Fiction" to be marked correct even if reached via wrong path
+                        const segmentPath = prevNode ? `${prevNode.name}/${part}` : part;
+                        // Check both the segment and the full path (segment takes priority for intermediate steps)
+                        const isCorrectStep = isPathCorrect(segmentPath) || isPathCorrect(nextPath);
                         if (isCorrectStep) {
                             prevNode.stats.rightPath++;
                         } else {
@@ -181,11 +258,17 @@ export function PietreeTab({ data }: PietreeTabProps) {
 
                     const linkId = `${prevNode.id}->${node.id}`;
                     if (!linksMap.has(linkId)) {
+                        // Check if the SEGMENT (prevNode -> node) is correct, not just the full path
+                        // This allows "Books/Non-Fiction" to be marked correct even if reached via wrong path
+                        const segmentPath = prevNode ? `${prevNode.name}/${part}` : part;
+                        const segmentIsCorrect = isPathCorrect(segmentPath);
+                        const fullPathIsCorrect = isPathCorrect(nextPath);
+                        const linkIsCorrect = !isBacktrack && (segmentIsCorrect || fullPathIsCorrect);
                         linksMap.set(linkId, {
                             source: prevNode.id,
                             target: node.id,
                             value: 0,
-                            isCorrectPath: !isBacktrack && expectedPaths.some(p => p.startsWith(nextPath.toLowerCase()))
+                            isCorrectPath: linkIsCorrect
                         });
                     }
                     linksMap.get(linkId)!.value++;

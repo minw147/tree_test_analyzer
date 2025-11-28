@@ -212,4 +212,42 @@ export class CustomApiAdapter implements StorageAdapter {
             return { studies: null, error: error instanceof Error ? error.message : "Unknown error" };
         }
     }
+
+    async fetchResults(studyId: string): Promise<{ results: ParticipantResult[] | null; error?: string }> {
+        if (!this.config.endpointUrl) {
+            return { results: null, error: "No endpoint URL configured" };
+        }
+
+        try {
+            const response = await fetch(`${this.config.endpointUrl}/studies/${studyId}/results`, {
+                method: 'GET',
+                headers: this.getHeaders(),
+            });
+
+            if (response.status === 404) {
+                return { results: [] }; // No results yet, return empty array
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const results = await response.json();
+            
+            // Ensure we return an array
+            if (Array.isArray(results)) {
+                return { results };
+            } else {
+                // Some APIs might return { results: [...] } format
+                if (results.results && Array.isArray(results.results)) {
+                    return { results: results.results };
+                }
+                return { results: null, error: "Invalid response format: expected array of results" };
+            }
+        } catch (error) {
+            console.error("Failed to fetch results from custom API:", error);
+            return { results: null, error: error instanceof Error ? error.message : "Unknown error" };
+        }
+    }
 }

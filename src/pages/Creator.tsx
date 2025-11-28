@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useParams, useNavigate } from "react-router-dom";
-import { Network, ClipboardList, Settings, Database, Share2, Eye, ExternalLink, Edit2 } from "lucide-react";
+import { Network, ClipboardList, Settings, Database, Share2, Eye, ExternalLink, Edit2, BarChart3 } from "lucide-react";
 import type { StudyConfig } from "@/lib/types/study";
 import { generateStudyId } from "@/lib/utils/id-generator";
 import { TreeEditor } from "@/components/creator/TreeEditor";
 import { TaskEditor } from "@/components/creator/TaskEditor";
 import { SettingsEditor } from "@/components/creator/SettingsEditor";
 import { StorageEditor } from "@/components/creator/StorageEditor";
+import { AnalyzeStudyTab } from "@/components/creator/AnalyzeStudyTab";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { createStorageAdapter } from "@/lib/storage/factory";
 import { getGlobalCustomApiConfig, saveGlobalCustomApiConfig } from "@/lib/utils/global-settings";
 
-type TabType = "tree" | "tasks" | "settings" | "preview" | "storage" | "export";
+type TabType = "tree" | "tasks" | "settings" | "preview" | "storage" | "export" | "analyze";
 
 const STORAGE_KEY_STUDIES = "tree-test-studies";
 
@@ -26,23 +27,23 @@ const getDefaultStudy = (): StudyConfig => {
     const globalCustomApi = getGlobalCustomApiConfig();
     
     return {
-        id: generateStudyId(),
-        name: "Untitled Study",
-        creator: "",
-        tree: [],
-        tasks: [],
+    id: generateStudyId(),
+    name: "Untitled Study",
+    creator: "",
+    tree: [],
+    tasks: [],
         storage: globalCustomApi || {
-            type: "local-download",
-        },
-        settings: {
-            welcomeMessage: "# Welcome to this Tree Test\n\nThank you for participating!",
-            instructions: "# Instructions\n\nRead each task carefully and navigate through the tree to find where you think the answer would be located.",
-            completedMessage: "# Thank you!\n\nYour responses have been recorded.",
-        },
+        type: "local-download",
+    },
+    settings: {
+        welcomeMessage: "# Welcome to this Tree Test\n\nThank you for participating!",
+        instructions: "# Instructions\n\nRead each task carefully and navigate through the tree to find where you think the answer would be located.",
+        completedMessage: "# Thank you!\n\nYour responses have been recorded.",
+    },
         status: "draft",
         accessStatus: "active",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     };
 };
 
@@ -211,6 +212,7 @@ export function Creator() {
         { id: "preview" as TabType, name: "Preview", icon: Eye },
         { id: "storage" as TabType, name: "Storage", icon: Database },
         { id: "export" as TabType, name: "Launch Study", icon: Share2 },
+        { id: "analyze" as TabType, name: "Analyze Study", icon: BarChart3 },
     ];
 
     const handleOpenPreview = () => {
@@ -347,20 +349,21 @@ export function Creator() {
             {/* Tab Navigation */}
             <div className="bg-white border-b border-gray-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <nav className="flex space-x-8">
+                    <nav className="flex md:space-x-8 justify-between md:justify-start">
                         {tabs.map((tab) => {
                             const Icon = tab.icon;
                             return (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors inline-flex items-center gap-2 ${activeTab === tab.id
+                                    className={`py-4 px-1 md:px-1 border-b-2 font-medium text-sm transition-colors inline-flex items-center gap-2 flex-1 md:flex-none justify-center md:justify-start ${activeTab === tab.id
                                         ? "border-blue-500 text-blue-600"
                                         : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                         }`}
+                                    title={tab.name}
                                 >
-                                    <Icon className="h-4 w-4" />
-                                    {tab.name}
+                                    <Icon className="h-4 w-4 flex-shrink-0" />
+                                    <span className="hidden md:inline">{tab.name}</span>
                                 </button>
                             );
                         })}
@@ -830,10 +833,14 @@ export function Creator() {
                                                     Download Study Config JSON
                                                 </Button>
                                 </div>
-                                        </div>
+                            </div>
                                     </CardContent>
                                 </Card>
                             </div>
+                        )}
+
+                        {activeTab === "analyze" && (
+                            <AnalyzeStudyTab study={study} />
                         )}
                     </CardContent>
                 </Card>

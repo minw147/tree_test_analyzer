@@ -134,4 +134,5 @@ export interface UploadedData {
     treeStructure?: Item[]; // Optional if provided separately or inferred
     createdAt: string; // ISO timestamp
     updatedAt: string; // ISO timestamp
+    sourceStudyId?: string; // Optional: ID of the source study in Creator (for tracking imports)
 }

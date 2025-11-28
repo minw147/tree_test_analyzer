@@ -79,6 +79,12 @@ export class LocalDownloadAdapter implements StorageAdapter {
         return { success: true };
     }
 
+    async fetchResults(_studyId: string): Promise<{ results: ParticipantResult[] | null; error?: string }> {
+        // Local download adapter doesn't support fetching results
+        // Results are downloaded individually by participants
+        return { results: null, error: "Local download adapter does not support fetching results" };
+    }
+
     private formatDuration(seconds: number): string {
         const h = Math.floor(seconds / 3600);
         const m = Math.floor((seconds % 3600) / 60);

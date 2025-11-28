@@ -7,6 +7,7 @@ import url from 'url';
 
 const PORT = 3001;
 const studies = new Map(); // In-memory storage for testing
+const results = new Map(); // Store results by studyId: Map<studyId, ParticipantResult[]>
 
 const server = http.createServer((req, res) => {
     // Enable CORS
@@ -33,7 +34,34 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // GET /studies/:id - Fetch study config
+    // GET /studies/:id/results - Fetch all results for a study (must be before GET /studies/:id)
+    if (path.match(/^\/studies\/(.+)\/results$/) && method === 'GET') {
+        const studyId = path.match(/^\/studies\/(.+)\/results$/)[1];
+        const studyResults = results.get(studyId) || [];
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(studyResults));
+        return;
+    }
+
+    // GET /studies/:id/status - Check study status (must be before GET /studies/:id)
+    if (path.match(/^\/studies\/(.+)\/status$/) && method === 'GET') {
+        const studyId = path.match(/^\/studies\/(.+)\/status$/)[1];
+        const study = studies.get(studyId);
+        
+        if (!study) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'not-found' }));
+            return;
+        }
+
+        const accessStatus = study.config.accessStatus || 'active';
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: accessStatus }));
+        return;
+    }
+
+    // GET /studies/:id - Fetch study config (must be after specific routes like /status and /results)
     if (path.match(/^\/studies\/(.+)$/) && method === 'GET') {
         const studyId = path.match(/^\/studies\/(.+)$/)[1];
         const study = studies.get(studyId);
@@ -73,6 +101,16 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // GET /studies - Fetch all studies (for sync feature)
+    if (path === '/studies' && method === 'GET') {
+        // Convert Map to array of study configs
+        const allStudies = Array.from(studies.values()).map(study => study.config);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(allStudies));
+        return;
+    }
+
     // POST /studies - Create new study
     if (path === '/studies' && method === 'POST') {
         let body = '';
@@ -97,22 +135,6 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // GET /studies/:id/status - Check study status
-    if (path.match(/^\/studies\/(.+)\/status$/) && method === 'GET') {
-        const studyId = path.match(/^\/studies\/(.+)\/status$/)[1];
-        const study = studies.get(studyId);
-        
-        if (!study) {
-            res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ status: 'not-found' }));
-            return;
-        }
-
-        const accessStatus = study.config.accessStatus || 'active';
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: accessStatus }));
-        return;
-    }
 
     // PUT /studies/:id/status - Update study status
     if (path.match(/^\/studies\/(.+)\/status$/) && method === 'PUT') {
@@ -146,7 +168,7 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // POST /studies/:id/results - Submit participant results (for future testing)
+    // POST /studies/:id/results - Submit participant results
     if (path.match(/^\/studies\/(.+)\/results$/) && method === 'POST') {
         const studyId = path.match(/^\/studies\/(.+)\/results$/)[1];
         let body = '';
@@ -159,6 +181,12 @@ const server = http.createServer((req, res) => {
             try {
                 const result = JSON.parse(body);
                 console.log('Received result:', result.participantId);
+                
+                // Store the result
+                if (!results.has(studyId)) {
+                    results.set(studyId, []);
+                }
+                results.get(studyId).push(result);
                 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true }));
@@ -179,11 +207,13 @@ server.listen(PORT, () => {
     console.log(`\n✅ Test server running on http://localhost:${PORT}`);
     console.log(`\nEndpoints available:`);
     console.log(`  GET  /health - Health check`);
+    console.log(`  GET  /studies - Fetch all studies (for sync)`);
     console.log(`  GET  /studies/:id - Fetch study config`);
     console.log(`  PUT  /studies/:id - Update study config`);
     console.log(`  POST /studies - Create study`);
     console.log(`  GET  /studies/:id/status - Check study status`);
     console.log(`  PUT  /studies/:id/status - Update study status`);
+    console.log(`  GET  /studies/:id/results - Fetch all results for a study`);
     console.log(`  POST /studies/:id/results - Submit participant results`);
     console.log(`\n💡 Use this URL in Creator: http://localhost:${PORT}\n`);
 });

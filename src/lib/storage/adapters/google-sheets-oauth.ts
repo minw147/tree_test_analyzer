@@ -245,6 +245,11 @@ export class GoogleSheetsOAuthAdapter implements StorageAdapter {
         }
     }
 
+    async fetchResults(_studyId: string): Promise<{ results: ParticipantResult[] | null; error?: string }> {
+        // OAuth API method not fully implemented yet
+        return { results: null, error: "OAuth API method does not support fetching results yet" };
+    }
+
     // Method to set OAuth token (called after OAuth flow completes)
     setAccessToken(token: string): void {
         this.setToken(token);

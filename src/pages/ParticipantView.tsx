@@ -12,6 +12,7 @@ interface ParticipantViewState {
     study: StudyConfig | null;
     loadingState: LoadingState;
     errorMessage: string | null;
+    loadedFromApi?: boolean; // Track if study was loaded from API (true) or local fallback (false)
 }
 
 export function ParticipantView() {
@@ -98,6 +99,7 @@ export function ParticipantView() {
                             study: parsed,
                             loadingState: 'ready',
                             errorMessage: null,
+                            loadedFromApi: false, // Loaded from sessionStorage (preview)
                         });
                         return;
                     }
@@ -150,6 +152,7 @@ export function ParticipantView() {
                                 study: parsed,
                                 loadingState: 'ready',
                                 errorMessage: null,
+                                loadedFromApi: false, // Loaded from sessionStorage
                             });
                             return;
                         }
@@ -188,6 +191,7 @@ export function ParticipantView() {
                                     study: fetchResult.config,
                                     loadingState: 'ready',
                                     errorMessage: null,
+                                    loadedFromApi: true, // Successfully loaded from API
                                 });
                                 return;
                             } else {
@@ -220,6 +224,7 @@ export function ParticipantView() {
                             study: parsed,
                             loadingState: 'ready',
                             errorMessage: null,
+                            loadedFromApi: false, // Loaded from local storage fallback
                         });
                         return;
                     }
@@ -272,6 +277,7 @@ export function ParticipantView() {
                             study: fetchResult.config,
                             loadingState: 'ready',
                             errorMessage: null,
+                            loadedFromApi: true, // Successfully loaded from Google Sheets
                         });
                         return;
                     }
@@ -314,12 +320,20 @@ export function ParticipantView() {
         const pathParts = path.split('/').filter(Boolean);
         const nodeName = pathParts[pathParts.length - 1];
         
-        // Add node to path (track full sequence, including duplicates if user goes back and forth)
-        taskPaths.current.set(taskIndex, [...currentPath, nodeName]);
+        // Prevent duplicate consecutive clicks (like Usabilitree)
+        // Only add if it's different from the last node, OR if it's a backtrack
+        const lastNode = currentPath[currentPath.length - 1];
+        const isBacktrack = lastNode && pathParts.length > 0 && 
+            pathParts.slice(0, -1).includes(nodeName);
         
-        // Increment click count
-        const clicks = taskClicks.current.get(taskIndex) || 0;
-        taskClicks.current.set(taskIndex, clicks + 1);
+        if (lastNode !== nodeName || isBacktrack) {
+            // Add node to path (track full sequence, including backtracking)
+            taskPaths.current.set(taskIndex, [...currentPath, nodeName]);
+            
+            // Increment click count
+            const clicks = taskClicks.current.get(taskIndex) || 0;
+            taskClicks.current.set(taskIndex, clicks + 1);
+        }
     };
 
     const handleTaskComplete = (
@@ -346,26 +360,32 @@ export function ParticipantView() {
         }
 
         // Then verify with storage (in case status changed after page load)
-        try {
-            const adapter = createStorageAdapter(state.study.storage);
-            const statusResult = await adapter.checkStatus(state.study.id);
-            
-            if (statusResult.status === 'closed') {
-                alert('This study is currently closed and not accepting new submissions.');
-                return;
+        // Only check status from API if study was loaded from API
+        // If loaded from local fallback, trust the local config's accessStatus
+        if (state.loadedFromApi === true) {
+            try {
+                const adapter = createStorageAdapter(state.study.storage);
+                const statusResult = await adapter.checkStatus(state.study.id);
+                
+                if (statusResult.status === 'closed') {
+                    alert('This study is currently closed and not accepting new submissions.');
+                    return;
+                }
+                
+                // If status check returns 'not-found', but we successfully loaded config from API,
+                // trust the config's accessStatus instead of blocking (study exists, status endpoint might have issue)
+                if (statusResult.status === 'not-found') {
+                    console.warn("Status check returned not-found, but config was loaded. Using config's accessStatus.");
+                    // Continue with submission - we already checked config's accessStatus above
+                }
+            } catch (statusError) {
+                console.error("Failed to check study status:", statusError);
+                // If we successfully loaded config from API, trust the config's accessStatus
+                // Don't block submission - the study exists, status endpoint might have temporary issue
+                console.warn("Status check failed, but config was loaded. Using config's accessStatus.");
             }
-            
-            // If status check returns 'not-found', block submission to be safe
-            if (statusResult.status === 'not-found') {
-                alert('Unable to verify study status. Please refresh the page and try again.');
-                return;
-            }
-        } catch (statusError) {
-            console.error("Failed to check study status:", statusError);
-            // Block submission if we can't verify status (safer approach)
-            alert('Unable to verify study status. Please refresh the page and try again.');
-            return;
         }
+        // If loadedFromApi is false/undefined (local fallback), we already checked config's accessStatus above
 
         setIsSubmitting(true);
 
@@ -397,6 +417,7 @@ export function ParticipantView() {
                     } else {
                         // Normalize selected path (remove leading slash, split into parts)
                         const selectedPathParts = taskResult.selectedPath.split('/').filter(Boolean);
+                        const pathTaken = taskPaths.current.get(index) || [];
                         const correctPaths = task.correctPath || [];
                         
                         // Check if selected path matches any correct path
@@ -411,14 +432,24 @@ export function ParticipantView() {
                         });
                         
                         if (isCorrect) {
-                            // Determine if direct or indirect success
-                            // Direct: minimal clicks, took the most efficient path
-                            // Indirect: found the right answer but wandered/explored more
-                            const clicks = taskClicks.current.get(index) || 0;
-                            const minClicksNeeded = selectedPathParts.length; // Minimum clicks to reach this depth
-                            // If clicks are close to minimum (within 2-3), it's direct
-                            // Otherwise, it's indirect (wandered but found it)
-                            outcome = clicks <= (minClicksNeeded + 2) ? 'direct-success' : 'indirect-success';
+                            // Check if the actual path taken (navigation history) exactly matches the expected path
+                            // If pathTaken includes extra nodes (detours), it's indirect success
+                            const pathTakenMatchesExactly = correctPaths.some(correctPath => {
+                                const correctParts = correctPath.split('/').filter(Boolean);
+                                // Path taken must match exactly in length and content
+                                if (pathTaken.length !== correctParts.length) {
+                                    return false;
+                                }
+                                return pathTaken.every((node, i) => node === correctParts[i]);
+                            });
+                            
+                            // Direct success: path taken exactly matches expected path (no detours)
+                            // Indirect success: reached correct location but took a detour
+                            if (pathTakenMatchesExactly) {
+                                outcome = 'direct-success';
+                            } else {
+                                outcome = 'indirect-success';
+                            }
                         } else {
                             outcome = 'failure';
                         }

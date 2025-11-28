@@ -5,6 +5,7 @@ import type { Item } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { sanitizeTreeTestLink } from "@/lib/utils";
 
 interface ParticipantPreviewProps {
     study: StudyConfig;
@@ -55,12 +56,34 @@ export function ParticipantPreview({
     };
 
     const toggleNode = (path: string) => {
-        const newExpanded = new Set(expandedNodes);
-        if (newExpanded.has(path)) {
-            newExpanded.delete(path);
+        const newExpanded = new Set<string>();
+        
+        // If the node was already expanded, collapse it and all its descendants
+        if (expandedNodes.has(path)) {
+            // Keep only paths that are ancestors (not this path or its descendants)
+            expandedNodes.forEach(expandedPath => {
+                if (expandedPath !== path && !expandedPath.startsWith(path + "/")) {
+                    // Check if this is an ancestor of the clicked path
+                    if (path.startsWith(expandedPath + "/")) {
+                        newExpanded.add(expandedPath);
+                    }
+                }
+            });
         } else {
+            // Expand this node (only one level below)
+            // Collapse all other branches - only keep ancestors of the clicked path
+            expandedNodes.forEach(expandedPath => {
+                // Keep paths that are ancestors of the clicked path
+                if (expandedPath !== path && path.startsWith(expandedPath + "/")) {
+                    newExpanded.add(expandedPath);
+                }
+                // All other paths (siblings and their descendants) are removed
+            });
+            
+            // Add the clicked path (this expands one level below)
             newExpanded.add(path);
         }
+        
         setExpandedNodes(newExpanded);
     };
 
@@ -70,10 +93,38 @@ export function ParticipantPreview({
         const pathParts = path.split("/").filter(Boolean);
         setBreadcrumb(pathParts);
         
+        // If this node has children, ensure proper expansion behavior
+        // (toggleNode is already called in renderNode onClick, but we ensure consistency here)
+        const node = findNodeByPath(items, path);
+        if (node && node.children && node.children.length > 0) {
+            // The toggleNode will be called from renderNode onClick
+            // But we ensure the expansion state is correct
+        }
+        
         // Track node click if callback provided
         if (onNodeClick && phase === "task") {
             onNodeClick(currentTaskIndex, path);
         }
+    };
+
+    // Helper function to find a node by its path
+    const findNodeByPath = (nodes: Item[], targetPath: string): Item | null => {
+        const pathParts = targetPath.split("/").filter(Boolean);
+        if (pathParts.length === 0) return null;
+        
+        function search(nodes: Item[], remainingParts: string[]): Item | null {
+            if (remainingParts.length === 0) return null;
+            
+            const [firstPart, ...rest] = remainingParts;
+            const node = nodes.find(n => sanitizeTreeTestLink(n.name) === firstPart);
+            
+            if (!node) return null;
+            if (rest.length === 0) return node;
+            
+            return node.children ? search(node.children, rest) : null;
+        }
+        
+        return search(nodes, pathParts);
     };
 
     const handleBreadcrumbClick = (index: number) => {
@@ -91,6 +142,12 @@ export function ParticipantPreview({
         setExpandedNodes(pathsToExpand);
         setSelectedPath("");
         setLastClickedPath(newPath);
+        
+        // Track breadcrumb click (backtracking) if callback provided
+        // This ensures backtracking behavior is recorded for analysis
+        if (onNodeClick && phase === "task") {
+            onNodeClick(currentTaskIndex, newPath);
+        }
     };
 
     const handleFindItHere = (path: string) => {
@@ -270,13 +327,13 @@ export function ParticipantPreview({
         <div className="min-h-screen bg-gray-50">
             {/* Preview Mode Banner - only show in preview mode */}
             {isPreview && (
-                <div className="bg-yellow-100 border-b border-yellow-300 px-4 py-2">
-                    <div className="max-w-4xl mx-auto">
-                        <p className="text-sm font-medium text-yellow-800">
-                            ⚠️ Preview Mode - Not Collecting Responses
-                        </p>
-                    </div>
+            <div className="bg-yellow-100 border-b border-yellow-300 px-4 py-2">
+                <div className="max-w-4xl mx-auto">
+                    <p className="text-sm font-medium text-yellow-800">
+                        ⚠️ Preview Mode - Not Collecting Responses
+                    </p>
                 </div>
+            </div>
             )}
 
             <div className="max-w-4xl mx-auto px-4 py-8">
@@ -339,7 +396,7 @@ export function ParticipantPreview({
                                     <h2 className="text-xl font-semibold text-gray-900">
                                         {study.settings.customText?.taskProgress || "Task"} {currentTaskIndex + 1} of {study.tasks.length}
                                     </h2>
-                                    <p className="text-gray-600 mt-1">{currentTask.description}</p>
+                                    <p className="text-lg font-bold text-gray-900 mt-2">{currentTask.description}</p>
                                 </div>
                             </div>
 
@@ -408,19 +465,14 @@ export function ParticipantPreview({
                                             >
                                                 Submit
                                             </Button>
-                                        </div>
-                                    </div>
+                                </div>
+                            </div>
                                 </div>
                             )}
 
                             {/* Navigation */}
                             {!selectedPath && (
-                                <div className="flex justify-between items-center pt-4 border-t">
-                                    <div className="text-sm text-gray-500">
-                                        {lastClickedPath 
-                                            ? "Click 'I'd find it here' to continue" 
-                                            : "Navigate the tree to find your answer"}
-                                    </div>
+                                <div className="flex justify-end items-center pt-4 border-t">
                                     <Button
                                         variant="outline"
                                         onClick={handleSkipTask}

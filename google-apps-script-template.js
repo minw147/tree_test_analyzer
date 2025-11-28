@@ -114,6 +114,9 @@ function doPost(e) {
       case 'fetchConfig':
         result = handleFetchConfig(requestData.studyId);
         break;
+      case 'fetchResults':
+        result = handleFetchResults(requestData.studyId);
+        break;
       case 'test':
         result = { success: true, message: 'Connection successful' };
         break;
@@ -455,6 +458,126 @@ function handleFetchConfig(studyId) {
   } catch (error) {
     return { 
       config: null, 
+      error: error.toString() 
+    };
+  }
+}
+
+/**
+ * Handle fetching all results for a study
+ * Converts sheet rows back to ParticipantResult format
+ */
+function handleFetchResults(studyId) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    
+    if (!sheet || sheet.getLastRow() === 0) {
+      return { results: [] };
+    }
+
+    // Get headers and data
+    const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const dataRows = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+    
+    // Find study config to get study name
+    const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+    let studyName = 'Unknown Study';
+    if (configSheet) {
+      const configData = configSheet.getDataRange().getValues();
+      for (let i = 1; i < configData.length; i++) {
+        if (configData[i][0] === studyId) {
+          try {
+            const config = JSON.parse(configData[i][1]);
+            studyName = config.name || studyName;
+          } catch (e) {
+            // Ignore parse errors
+          }
+          break;
+        }
+      }
+    }
+
+    const results = [];
+    
+    // Process each data row
+    dataRows.forEach((row) => {
+      // Skip empty rows
+      if (!row[0]) return;
+      
+      // Build row object from headers
+      const rowObj = {};
+      headerRow.forEach((header, index) => {
+        rowObj[header] = row[index];
+      });
+      
+      // Extract participant metadata
+      const participantId = rowObj['Participant ID'] || '';
+      const status = rowObj['Status'] === 'Completed' ? 'completed' : 'abandoned';
+      const startedAt = rowObj['Start Time (UTC)'] || new Date().toISOString();
+      const completedAt = rowObj['End Time (UTC)'] || null;
+      
+      // Parse duration "HH:MM:SS" to seconds
+      let totalActiveTime = 0;
+      if (rowObj['Time Taken']) {
+        const parts = rowObj['Time Taken'].toString().split(':');
+        if (parts.length === 3) {
+          totalActiveTime = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+        }
+      }
+      
+      // Extract task results
+      const taskResults = [];
+      let taskNum = 1;
+      
+      while (rowObj[`Task ${taskNum} Path Taken`] !== undefined) {
+        const pathTaken = rowObj[`Task ${taskNum} Path Taken`] || '';
+        const outcomeStr = rowObj[`Task ${taskNum} Path Outcome`] || '';
+        const confidence = rowObj[`Task ${taskNum}: How confident are you with your answer?`];
+        const timeSeconds = parseFloat(rowObj[`Task ${taskNum} Time`]) || 0;
+        
+        // Map outcome string back to PathOutcome type
+        let outcome = 'failure';
+        if (outcomeStr.includes('Direct Success')) outcome = 'direct-success';
+        else if (outcomeStr.includes('Indirect Success')) outcome = 'indirect-success';
+        else if (outcomeStr.includes('Direct Skip')) outcome = 'direct-skip';
+        else if (outcomeStr.includes('Indirect Skip')) outcome = 'indirect-skip';
+        else if (outcomeStr.includes('Failure')) outcome = 'failure';
+        
+        // Parse path taken (split by '/')
+        const pathTakenArray = pathTaken ? pathTaken.split('/').filter(p => p.trim()) : [];
+        
+        taskResults.push({
+          taskId: `task-${taskNum}`,
+          taskDescription: `Task ${taskNum}`,
+          pathTaken: pathTakenArray,
+          outcome: outcome,
+          confidence: confidence ? parseInt(confidence) : undefined,
+          timeSeconds: timeSeconds,
+          timestamp: startedAt // Use study start time as task timestamp
+        });
+        
+        taskNum++;
+      }
+      
+      // Only include results that have at least one task
+      if (taskResults.length > 0) {
+        results.push({
+          participantId: participantId,
+          studyId: studyId,
+          studyName: studyName,
+          status: status,
+          startedAt: startedAt,
+          completedAt: completedAt,
+          totalActiveTime: totalActiveTime,
+          taskResults: taskResults
+        });
+      }
+    });
+    
+    return { results: results };
+  } catch (error) {
+    return { 
+      results: null, 
       error: error.toString() 
     };
   }

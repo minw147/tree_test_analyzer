@@ -265,5 +265,46 @@ export class GoogleSheetsAppsScriptAdapter implements StorageAdapter {
             return { success: false, error: error instanceof Error ? error.message : "Connection failed" };
         }
     }
+
+    async fetchResults(studyId: string): Promise<{ results: ParticipantResult[] | null; error?: string }> {
+        if (!this.config.webhookUrl) {
+            return { results: null, error: "No webhook URL configured" };
+        }
+
+        try {
+            // Use form-encoded data to avoid CORS preflight issues with Google Apps Script
+            const formData = new URLSearchParams();
+            formData.append('payload', JSON.stringify({
+                action: 'fetchResults',
+                studyId: studyId,
+            }));
+
+            const response = await fetch(this.config.webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData.toString(),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.results && Array.isArray(data.results)) {
+                return { results: data.results };
+            } else if (data.error) {
+                return { results: null, error: data.error };
+            } else {
+                return { results: [] }; // No results yet
+            }
+        } catch (error) {
+            console.error("Failed to fetch results from Google Sheets via Apps Script:", error);
+            return { results: null, error: error instanceof Error ? error.message : "Unknown error" };
+        }
+    }
 }
 
