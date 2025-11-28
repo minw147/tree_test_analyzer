@@ -82,7 +82,19 @@ function convertParticipants(
         });
 
         // Calculate duration in seconds
-        const durationSeconds = result.totalActiveTime || null;
+        // First try to use totalActiveTime, but if it's missing or 0, calculate from timestamps
+        let durationSeconds: number | null = null;
+        
+        if (result.totalActiveTime !== undefined && result.totalActiveTime !== null && result.totalActiveTime > 0) {
+            durationSeconds = result.totalActiveTime;
+        } else if (result.startedAt && result.completedAt) {
+            // Calculate duration from timestamps if totalActiveTime is not available
+            const startTime = new Date(result.startedAt).getTime();
+            const endTime = new Date(result.completedAt).getTime();
+            if (!isNaN(startTime) && !isNaN(endTime) && endTime >= startTime) {
+                durationSeconds = Math.floor((endTime - startTime) / 1000); // Convert to seconds
+            }
+        }
 
         return {
             id: result.participantId,
