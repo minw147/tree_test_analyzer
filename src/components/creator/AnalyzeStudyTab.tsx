@@ -95,15 +95,8 @@ export function AnalyzeStudyTab({ study }: AnalyzeStudyTabProps) {
                 throw new Error("This storage type does not support importing results. Please use manual download.");
             }
 
-            // Fetch latest config and results
-            const [configResult, resultsResult] = await Promise.all([
-                adapter.fetchConfig(study.id),
-                adapter.fetchResults(study.id),
-            ]);
-
-            if (configResult.error || !configResult.config) {
-                throw new Error(configResult.error || "Failed to fetch study configuration");
-            }
+            // Fetch results (required)
+            const resultsResult = await adapter.fetchResults(study.id);
 
             if (resultsResult.error) {
                 throw new Error(resultsResult.error);
@@ -117,8 +110,20 @@ export function AnalyzeStudyTab({ study }: AnalyzeStudyTabProps) {
                 return;
             }
 
+            // Try to fetch latest config, but fall back to local study config if fetch fails
+            let studyConfig = study;
+            try {
+                const configResult = await adapter.fetchConfig(study.id);
+                if (configResult.config && !configResult.error) {
+                    studyConfig = configResult.config;
+                }
+            } catch (configError) {
+                // Use local study config as fallback
+                console.warn("Failed to fetch latest config, using local config:", configError);
+            }
+
             // Convert to UploadedData format
-            const uploadedData = convertResultsToUploadedData(configResult.config, results);
+            const uploadedData = convertResultsToUploadedData(studyConfig, results);
 
             // Create full UploadedData with ID and timestamps
             const analyzerStudy: UploadedData = {

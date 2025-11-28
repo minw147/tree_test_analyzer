@@ -94,6 +94,14 @@ function doPost(e) {
 
     const action = requestData.action;
 
+    // Debug logging (only in Apps Script editor console, not visible to users)
+    if (!action) {
+      return createResponse({ 
+        success: false, 
+        error: 'No action specified. Received: ' + JSON.stringify(requestData) 
+      });
+    }
+
     let result;
     switch (action) {
       case 'appendRow':
@@ -121,7 +129,10 @@ function doPost(e) {
         result = { success: true, message: 'Connection successful' };
         break;
       default:
-        result = { success: false, error: 'Unknown action' };
+        result = { 
+          success: false, 
+          error: 'Unknown action: "' + action + '". Supported actions: appendRow, saveConfig, checkStatus, updateStatus, fetchConfig, fetchResults, test' 
+        };
     }
     
     return createResponse(result);

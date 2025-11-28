@@ -124,9 +124,9 @@
     * \[ ] Optional custom headers configuration
     * \[x] "Free - Bring Your Own Backend" badge
     * \[ ] Link to REST API documentation
-    * \[ ] Show "Using global config" indicator when global Custom API config is available
-    * \[ ] Option to "Use global config" or "Configure for this study only"
-    * \[ ] Auto-save to global settings when user configures Custom API (with confirmation)
+    * \[x] Show "Using global config" indicator when global Custom API config is available
+    * \[x] Option to "Use global config" or "Configure for this study only"
+    * \[x] Auto-save to global settings when user configures Custom API (with confirmation)
   * \[x] Test connection button
   * \[ ] Connection status indicator
 
@@ -137,14 +137,14 @@
   * \[x] Check study status (GET /studies/:studyId/status)
   * \[x] Update study status (PUT /studies/:studyId/status)
   * \[x] Fetch study configuration (GET /studies/:studyId)
-  * \[ ] Fetch all studies (GET /studies) - for sync functionality
+  * \[x] Fetch all studies (GET /studies) - for sync functionality
   * \[x] Test connection functionality
   * \[x] Error handling and retry logic
   * \[x] Support for standard HTTP authentication methods
-  * \[ ] Global Custom API configuration support:
-    * \[ ] Use global config from Settings when available
-    * \[ ] Allow per-study override of global config
-    * \[ ] Auto-save study-level config to global settings (when configured in study storage editor)
+  * \[x] Global Custom API configuration support:
+    * \[x] Use global config from Settings when available
+    * \[x] Allow per-study override of global config
+    * \[x] Auto-save study-level config to global settings (when configured in study storage editor)
 
 * \[x] Implement Google Sheets adapter (optional, free/BYOS)
   * \[x] Google Sheets Apps Script method (webhook-based)
@@ -184,39 +184,39 @@
   * \[x] Factory utility to create adapter instances from storage config
   * \[x] Support for Custom API, Local Download, and Google Sheets adapters
 
-* \[ ] Build Global Settings / User Preferences
-  * \[ ] Create Settings page (`/settings`)
-    * \[ ] Add Settings link to Header navigation
-    * \[ ] Add route in App.tsx
-    * \[ ] Settings page layout and UI
-  * \[ ] Global Custom API configuration
-    * \[ ] Store global Custom API config in localStorage (`tree-test-global-settings`)
-    * \[ ] Settings page form for Custom API configuration:
-      * \[ ] API endpoint URL input
-      * \[ ] Authentication method selector (API Key / Bearer Token / None)
-      * \[ ] API key/credentials input (masked)
-      * \[ ] Test connection button
-      * \[ ] Save/update global config
-    * \[ ] Auto-save from Study Storage Editor:
-      * \[ ] When user configures Custom API in a study's storage page, auto-save to global settings (if global config doesn't exist)
-      * \[ ] Show indicator: "This will be saved as your default Custom API configuration"
-      * \[ ] Optional: Allow user to choose "Save as default" or "Use only for this study"
-  * \[ ] Default storage configuration for new studies
-    * \[ ] New studies use global Custom API config by default (if available)
-    * \[ ] Fallback to `local-download` if no global config exists
-    * \[ ] Allow per-study override (studies can use different storage types)
-  * \[ ] Sync from Custom API functionality
-    * \[ ] Add "Sync from API" button in Settings page (below Custom API configuration)
-    * \[ ] Add "Sync from API" button on Landing page
-    * \[ ] Sync functionality:
-      * \[ ] Fetch all studies from Custom API (`GET /studies` endpoint)
-      * \[ ] Merge API studies with local studies (additive, not replacing)
-      * \[ ] Handle duplicate studies (by ID) - keep local version or merge intelligently
-      * \[ ] Show sync status (loading, success, error)
-      * \[ ] Display number of studies added/updated
-      * \[ ] Error handling for network failures, authentication errors
-    * \[ ] Sync only works if global Custom API config is set
-    * \[ ] Show message if no global config: "Configure Custom API in Settings first"
+* \[x] Build Global Settings / User Preferences
+  * \[x] Create Settings page (`/settings`)
+    * \[x] Add Settings link to Header navigation
+    * \[x] Add route in App.tsx
+    * \[x] Settings page layout and UI
+  * \[x] Global Custom API configuration
+    * \[x] Store global Custom API config in localStorage (`tree-test-global-settings`)
+    * \[x] Settings page form for Custom API configuration:
+      * \[x] API endpoint URL input
+      * \[x] Authentication method selector (API Key / Bearer Token / None)
+      * \[x] API key/credentials input (masked)
+      * \[x] Test connection button
+      * \[x] Save/update global config
+    * \[x] Auto-save from Study Storage Editor:
+      * \[x] When user configures Custom API in a study's storage page, auto-save to global settings (if global config doesn't exist)
+      * \[x] Show indicator: "This will be saved as your default Custom API configuration"
+      * \[x] Optional: Allow user to choose "Save as default" or "Use only for this study"
+  * \[x] Default storage configuration for new studies
+    * \[x] New studies use global Custom API config by default (if available)
+    * \[x] Fallback to `local-download` if no global config exists
+    * \[x] Allow per-study override (studies can use different storage types)
+  * \[x] Sync from Custom API functionality
+    * \[x] Add "Sync from API" button in Settings page (below Custom API configuration)
+    * \[x] Add "Sync from API" button on Landing page
+    * \[x] Sync functionality:
+      * \[x] Fetch all studies from Custom API (`GET /studies` endpoint)
+      * \[x] Merge API studies with local studies (additive, not replacing)
+      * \[x] Handle duplicate studies (by ID) - keep local version or merge intelligently
+      * \[x] Show sync status (loading, success, error)
+      * \[x] Display number of studies added/updated
+      * \[x] Error handling for network failures, authentication errors
+    * \[x] Sync only works if global Custom API config is set
+    * \[x] Show message if no global config: "Configure Custom API in Settings first"
 
 * \[ ] Create documentation
   * \[ ] Hosted Backend setup guide:
