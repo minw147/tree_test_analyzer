@@ -204,6 +204,7 @@ export function PietreeTab({ data }: PietreeTabProps) {
             const parts = pathStr.split('/').filter(Boolean);
 
             if (parts.length === 0) {
+                // Skip tasks with no path data (e.g., skipped tasks)
                 return;
             }
 

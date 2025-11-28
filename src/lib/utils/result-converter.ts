@@ -24,6 +24,11 @@ function convertParticipants(
     return participantResults.map((result) => {
         // Convert task results
         const taskResults: TaskResult[] = result.taskResults.map((task) => {
+            // Ensure pathTaken is an array
+            const pathTakenArray = Array.isArray(task.pathTaken) 
+                ? task.pathTaken 
+                : (task.pathTaken ? [task.pathTaken] : []);
+            
             // Map outcome to successful and directPathTaken
             let successful = false;
             let directPathTaken = false;
@@ -39,7 +44,7 @@ function convertParticipants(
                     break;
                 case 'failure':
                     successful = false;
-                    directPathTaken = task.pathTaken.length <= 1; // Heuristic: direct if very short path
+                    directPathTaken = pathTakenArray.length <= 1; // Heuristic: direct if very short path
                     break;
                 case 'direct-skip':
                     successful = false;
@@ -75,7 +80,7 @@ function convertParticipants(
                 successful: successful,
                 directPathTaken: directPathTaken,
                 completionTimeSeconds: task.timeSeconds,
-                pathTaken: task.pathTaken.join('/'), // Join array to string
+                pathTaken: pathTakenArray.join('/'), // Join array to string
                 skipped: task.outcome === 'direct-skip' || task.outcome === 'indirect-skip',
                 confidenceRating: task.confidence || null,
             };
@@ -157,7 +162,16 @@ export function convertResultsToUploadedData(
     studyConfig: StudyConfig,
     participantResults: ParticipantResult[]
 ): Omit<UploadedData, "id" | "createdAt" | "updatedAt"> {
+    // Debug: Log raw results to check structure
+    console.log("convertResultsToUploadedData: Raw participantResults", participantResults);
+    console.log("convertResultsToUploadedData: Sample taskResult", participantResults[0]?.taskResults[0]);
+    
     const participants = convertParticipants(participantResults, studyConfig.tasks);
+    
+    // Debug: Log converted participants to check pathTaken
+    console.log("convertResultsToUploadedData: Converted participants", participants);
+    console.log("convertResultsToUploadedData: Sample converted taskResult", participants[0]?.taskResults[0]);
+    
     const tasks = convertTasks(studyConfig);
     const treeStructure = convertTree(studyConfig.tree);
 
