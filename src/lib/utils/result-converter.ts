@@ -14,6 +14,13 @@ function convertParticipants(
         taskIdToIndex.set(task.id, index + 1); // Task index is 1-based in analyzer
     });
 
+    // Create a map of task index (1-based) to actual task ID from study config
+    // This handles cases where Google Sheets returns task-1, task-2, etc.
+    const taskIndexToId = new Map<number, string>();
+    studyTasks.forEach((task, index) => {
+        taskIndexToId.set(index + 1, task.id);
+    });
+
     return participantResults.map((result) => {
         // Convert task results
         const taskResults: TaskResult[] = result.taskResults.map((task) => {
@@ -44,11 +51,25 @@ function convertParticipants(
                     break;
             }
 
-            // Find task index from study config
-            const taskIndex = taskIdToIndex.get(task.taskId) || 1; // Default to 1 if not found
+            // Extract task number from taskId (e.g., "task-1" -> 1, "task-2" -> 2)
+            // Or use the actual task ID if it's not in the format "task-N"
+            let actualTaskId = task.taskId;
+            let taskIndex = taskIdToIndex.get(task.taskId);
+            
+            // If taskId is in format "task-N", extract the number and map to actual task ID
+            const taskNumMatch = task.taskId.match(/^task-(\d+)$/);
+            if (taskNumMatch) {
+                const taskNum = parseInt(taskNumMatch[1]);
+                taskIndex = taskNum;
+                // Map to the actual task ID from study config
+                actualTaskId = taskIndexToId.get(taskNum) || task.taskId;
+            } else {
+                // Use the task ID as-is and find its index
+                taskIndex = taskIdToIndex.get(task.taskId) || 1;
+            }
 
             return {
-                taskId: task.taskId,
+                taskId: actualTaskId, // Use the actual task ID from study config
                 taskIndex: taskIndex,
                 description: task.taskDescription,
                 successful: successful,
