@@ -274,10 +274,11 @@ export class GoogleSheetsAppsScriptAdapter implements StorageAdapter {
         try {
             // Use form-encoded data to avoid CORS preflight issues with Google Apps Script
             const formData = new URLSearchParams();
-            formData.append('payload', JSON.stringify({
+            const payload = {
                 action: 'fetchResults',
                 studyId: studyId,
-            }));
+            };
+            formData.append('payload', JSON.stringify(payload));
 
             const response = await fetch(this.config.webhookUrl, {
                 method: 'POST',
@@ -294,16 +295,33 @@ export class GoogleSheetsAppsScriptAdapter implements StorageAdapter {
 
             const data = await response.json();
             
+            // Check if the response indicates an error from the script
+            if (data.error) {
+                // Provide more context about what action was sent
+                const errorMessage = data.error.includes('Unknown action') 
+                    ? `Unknown action: The Google Apps Script doesn't recognize the "fetchResults" action. Please update your Google Apps Script with the latest version from the template. Action sent: "fetchResults", Study ID: ${studyId}`
+                    : data.error;
+                return { results: null, error: errorMessage };
+            }
+            
             if (data.results && Array.isArray(data.results)) {
                 return { results: data.results };
-            } else if (data.error) {
-                return { results: null, error: data.error };
             } else {
                 return { results: [] }; // No results yet
             }
         } catch (error) {
             console.error("Failed to fetch results from Google Sheets via Apps Script:", error);
-            return { results: null, error: error instanceof Error ? error.message : "Unknown error" };
+            const errorMessage = error instanceof Error ? error.message : "Unknown error";
+            
+            // If it's a network/CORS error, provide helpful guidance
+            if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS')) {
+                return { 
+                    results: null, 
+                    error: `Network error: Unable to connect to Google Apps Script. Please verify your webhook URL is correct and the script is deployed. Original error: ${errorMessage}` 
+                };
+            }
+            
+            return { results: null, error: errorMessage };
         }
     }
 }
