@@ -146,17 +146,41 @@ export class CustomApiAdapter implements StorageAdapter {
         }
 
         try {
-            const response = await fetch(`${this.config.endpointUrl}/studies/${result.studyId}/results`, {
-                method: 'POST',
-                headers: this.getHeaders(),
-                body: JSON.stringify(result),
-            });
+            const isSupabase = this.config.endpointUrl.includes('supabase.co');
+            
+            if (isSupabase) {
+                // For Supabase, POST to the results table with proper schema
+                const payload = {
+                    study_id: result.studyId,
+                    result_data: result, // Store entire ParticipantResult in JSONB column
+                };
+                
+                const response = await fetch(`${this.config.endpointUrl}/results`, {
+                    method: 'POST',
+                    headers: this.getHeaders(),
+                    body: JSON.stringify(payload),
+                });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                return { success: true };
+            } else {
+                // For other APIs, use standard endpoint
+                const response = await fetch(`${this.config.endpointUrl}/studies/${result.studyId}/results`, {
+                    method: 'POST',
+                    headers: this.getHeaders(),
+                    body: JSON.stringify(result),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                return { success: true };
             }
-
-            return { success: true };
         } catch (error) {
             console.error("Failed to submit results to custom API:", error);
             return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
@@ -273,26 +297,55 @@ export class CustomApiAdapter implements StorageAdapter {
         try {
             const isSupabase = this.config.endpointUrl.includes('supabase.co');
             
-            const response = await fetch(`${this.config.endpointUrl}/studies/${studyId}`, {
-                method: 'GET',
-                headers: this.getHeaders(),
-            });
+            if (isSupabase) {
+                // For Supabase, use query parameter to get by ID
+                const response = await fetch(`${this.config.endpointUrl}/studies?id=eq.${studyId}`, {
+                    method: 'GET',
+                    headers: this.getHeaders(),
+                });
 
-            if (response.status === 404) {
-                return { config: null, error: "Study not found" };
+                if (response.status === 404) {
+                    return { config: null, error: "Study not found" };
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                const data = await response.json();
+                
+                // Supabase returns an array, get first element
+                if (!Array.isArray(data) || data.length === 0) {
+                    return { config: null, error: "Study not found" };
+                }
+                
+                // Extract the config from the JSONB column
+                const config = data[0].config;
+                
+                if (!config) {
+                    return { config: null, error: "Study config not found" };
+                }
+                
+                return { config };
+            } else {
+                // For other APIs, use standard endpoint
+                const response = await fetch(`${this.config.endpointUrl}/studies/${studyId}`, {
+                    method: 'GET',
+                    headers: this.getHeaders(),
+                });
+
+                if (response.status === 404) {
+                    return { config: null, error: "Study not found" };
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return { config: data };
             }
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
-            // For Supabase, the StudyConfig is stored in the 'config' JSONB column
-            // For other APIs, the response is the StudyConfig directly
-            const config = isSupabase && data.config ? data.config : data;
-            
-            return { config };
         } catch (error) {
             return { config: null, error: error instanceof Error ? error.message : "Unknown error" };
         }
