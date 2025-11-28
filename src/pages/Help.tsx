@@ -1,11 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle, Clock, Target, Activity, Plus, BarChart3, Network, ClipboardList, Settings, Eye, Database, Share2, AlertCircle } from "lucide-react";
+import { CheckCircle, Clock, Target, Activity, Plus, BarChart3, Network, ClipboardList, Settings, Eye, Database, Share2, AlertCircle, Copy, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 export function Help() {
     const [activeTab, setActiveTab] = useState("analyze");
     const location = useLocation();
+    const [showSupabaseGuide, setShowSupabaseGuide] = useState(false);
+    const [showSupabaseScript, setShowSupabaseScript] = useState(false);
+    const [supabaseScriptCopied, setSupabaseScriptCopied] = useState(false);
+    const supabaseGuideRef = useRef<HTMLDivElement>(null);
+    const [showAppsScriptGuide, setShowAppsScriptGuide] = useState(false);
+    const [showOAuthGuide, setShowOAuthGuide] = useState(false);
 
     // Handle hash navigation to scroll to specific sections
     useEffect(() => {
@@ -22,6 +30,86 @@ export function Help() {
             }, 100);
         }
     }, [location.hash]);
+
+    // Get Supabase SQL script content
+    const getSupabaseScriptContent = (): string => {
+        return `-- Supabase Database Functions for Tree Test Suite
+-- Copy and paste this entire script into Supabase SQL Editor
+
+-- Function to get study status
+CREATE OR REPLACE FUNCTION get_study_status(study_id_param TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  study_config JSONB;
+  access_status TEXT;
+BEGIN
+  SELECT config INTO study_config
+  FROM studies
+  WHERE id = study_id_param;
+  
+  IF study_config IS NULL THEN
+    RETURN json_build_object('status', 'not-found');
+  END IF;
+  
+  access_status := study_config->>'accessStatus';
+  
+  IF access_status IS NULL THEN
+    access_status := 'active';
+  END IF;
+  
+  RETURN json_build_object('status', access_status);
+END;
+$$;
+
+-- Function to update study status
+CREATE OR REPLACE FUNCTION update_study_status(study_id_param TEXT, new_status TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  study_config JSONB;
+  updated_config JSONB;
+BEGIN
+  SELECT config INTO study_config
+  FROM studies
+  WHERE id = study_id_param;
+  
+  IF study_config IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'Study not found');
+  END IF;
+  
+  -- Update accessStatus in config
+  updated_config := jsonb_set(
+    study_config,
+    '{accessStatus}',
+    to_jsonb(new_status)
+  );
+  
+  -- Update closedAt if closing
+  IF new_status = 'closed' THEN
+    updated_config := jsonb_set(
+      updated_config,
+      '{closedAt}',
+      to_jsonb(now()::text)
+    );
+  ELSIF new_status = 'active' THEN
+    updated_config := updated_config - 'closedAt';
+  END IF;
+  
+  -- Save updated config
+  UPDATE studies
+  SET config = updated_config,
+      updated_at = now()
+  WHERE id = study_id_param;
+  
+  RETURN json_build_object('success', true);
+END;
+$$;`;
+    };
 
     return (
         <div className="container mx-auto p-4 py-8 max-w-4xl">
@@ -283,224 +371,241 @@ export function Help() {
                             </p>
 
                             <div className="space-y-6">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Method 1: Apps Script (Recommended)</h3>
-                                    <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                                        <p className="text-sm text-green-800 mb-3">
-                                            <strong>Best for:</strong> Most users. No coding required, easy one-click setup.
-                                        </p>
-                                        <ol className="text-sm text-green-800 space-y-2 list-decimal list-inside">
-                                            <li><strong>Create a Google Sheet:</strong> Create a new Google Sheet or use an existing one for your results.</li>
-                                            <li><strong>Open Apps Script Editor:</strong> 
-                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                                                    <li>In your Google Sheet, go to <strong>Extensions → Apps Script</strong></li>
-                                                    <li>This opens the Apps Script editor in a new tab</li>
-                                                </ul>
-                                            </li>
-                                            <li><strong>Install the Script:</strong>
-                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                                                    <li>Delete any existing code in the editor</li>
-                                                    <li>In the Tree Test Creator, go to Storage tab → Google Sheets → click "Show Script"</li>
-                                                    <li>Click "Copy Script" to copy the entire script</li>
-                                                    <li>Paste the script into the Apps Script editor</li>
-                                                    <li>Click <strong>Save</strong> (or press Ctrl+S / Cmd+S)</li>
-                                                </ul>
-                                            </li>
-                                            <li><strong>Deploy as Web App:</strong>
-                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                                                    <li>Click <strong>Deploy → New deployment</strong></li>
-                                                    <li>Click the <strong>gear icon (⚙️)</strong> next to "Select type"</li>
-                                                    <li>Choose <strong>"Web app"</strong> from the dropdown</li>
-                                                    <li>In the Configuration tab, set the following:
-                                                        <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
-                                                            <li><strong>Description:</strong> Enter a description (e.g., "Tree Test Results Webhook")</li>
-                                                            <li><strong>Execute as:</strong> Keep "Me (your-email@gmail.com)" - this is correct</li>
-                                                            <li><strong>Who has access:</strong> <strong className="text-red-600">IMPORTANT:</strong> Change this to <strong>"Anyone"</strong> (not "Only myself")</li>
-                                                        </ul>
-                                                    </li>
-                                                    <li>Click <strong>Deploy</strong></li>
-                                                    <li>Google will show a dialog with your Web app URL - <strong>copy this URL</strong></li>
-                                                    <li>The URL looks like: <code className="text-xs bg-white px-1 py-0.5 rounded">https://script.google.com/macros/s/ABC123.../exec</code></li>
-                                                </ul>
-                                            </li>
-                                            <li><strong>Configure in Creator:</strong> 
-                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                                                    <li>Go back to the Tree Test Creator Storage configuration</li>
-                                                    <li>Paste the webhook URL into the "Webhook URL" field</li>
-                                                </ul>
-                                            </li>
-                                            <li><strong>Test Connection:</strong> Click "Test Connection" to verify it works</li>
-                                        </ol>
-                                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                                            <p className="text-xs text-yellow-800 font-semibold mb-1">⚠️ Important Note:</p>
-                                            <p className="text-xs text-yellow-700">
-                                                You <strong>must</strong> set "Who has access" to <strong>"Anyone"</strong> for the webhook to work. 
-                                                If you set it to "Only myself", the Tree Test app won't be able to send data to your sheet.
+                                {/* Method 1: Apps Script Card */}
+                                <div className="rounded-lg border-2 border-green-200 bg-green-50 p-6">
+                                    <div className="flex items-start gap-3 mb-4">
+                                        <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h3 className="text-lg font-semibold text-green-900">Method 1: Apps Script (Recommended)</h3>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setShowAppsScriptGuide(!showAppsScriptGuide)}
+                                                    className="text-xs"
+                                                >
+                                                    {showAppsScriptGuide ? 'Hide' : 'Show'} Setup Guide
+                                                </Button>
+                                            </div>
+                                            <p className="text-sm text-green-800 mb-3">
+                                                <strong>Best for:</strong> Most users. No coding required, easy one-click setup.
                                             </p>
-                                        </div>
-                                        <p className="text-xs text-green-700 mt-3 italic">
-                                            The Apps Script automatically creates the correct column headers and appends participant results as new rows.
-                                        </p>
-                                    </div>
-                                    
-                                    <div className="mt-4 rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4">
-                                        <h4 className="font-semibold text-blue-900 mb-2">Using Multiple Studies with Google Sheets</h4>
-                                        <p className="text-sm text-blue-800 mb-3">
-                                            You can use the same Google Sheet and webhook URL for multiple studies, or use separate sheets for each study.
-                                        </p>
-                                        
-                                        <div className="space-y-3">
-                                            <div className="bg-white rounded p-3 border border-blue-200">
-                                                <h5 className="font-semibold text-blue-900 mb-1 text-sm">Option 1: Same Sheet, Same Webhook URL</h5>
-                                                <p className="text-xs text-blue-800 mb-2">
-                                                    <strong>Use this when:</strong> You want all studies to write to the same Google Sheet.
-                                                </p>
-                                                <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                                                    <li>Install the Apps Script once in your Google Sheet</li>
-                                                    <li>Deploy it and get the webhook URL</li>
-                                                    <li>Use the <strong>same webhook URL</strong> for all studies that should use this sheet</li>
-                                                    <li>All results will append to the same <code className="bg-blue-100 px-1 rounded">Results</code> tab</li>
-                                                    <li>Each study's configuration is stored separately in the <code className="bg-blue-100 px-1 rounded">StudyConfigs</code> tab</li>
-                                                </ul>
-                                                <p className="text-xs text-blue-600 mt-2 italic">
-                                                    Note: Results from different studies will be mixed together in the same tab. Each row contains participant data but not the study ID/name (this may be added in a future update).
-                                                </p>
-                                            </div>
-                                            
-                                            <div className="bg-white rounded p-3 border border-blue-200">
-                                                <h5 className="font-semibold text-blue-900 mb-1 text-sm">Option 2: Different Sheets, Different Webhook URLs</h5>
-                                                <p className="text-xs text-blue-800 mb-2">
-                                                    <strong>Use this when:</strong> You want each study to write to its own separate Google Sheet.
-                                                </p>
-                                                <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                                                    <li>Create a separate Google Sheet for each study (or group of studies)</li>
-                                                    <li>Install the Apps Script in each sheet separately</li>
-                                                    <li>Deploy each script and get its unique webhook URL</li>
-                                                    <li>Configure each study with its corresponding webhook URL</li>
-                                                    <li>Results will be isolated in their respective sheets</li>
-                                                </ul>
-                                                <p className="text-xs text-blue-600 mt-2 italic">
-                                                    Each Google Sheet deployment generates a unique webhook URL, so you can easily separate studies by using different sheets.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                                            <p className="text-xs text-yellow-800 font-semibold mb-1">💡 Quick Summary:</p>
-                                            <ul className="text-xs text-yellow-700 space-y-0.5 list-disc list-inside">
-                                                <li><strong>Same webhook URL</strong> = All studies write to the same sheet (results mixed together)</li>
-                                                <li><strong>Different webhook URLs</strong> = Each study writes to its own sheet (results isolated)</li>
+                                            <ul className="text-xs text-green-700 space-y-1 list-disc list-inside">
+                                                <li>Free and easy to set up</li>
+                                                <li>No Google Cloud Console configuration needed</li>
+                                                <li>Automatic column header creation</li>
+                                                <li>Supports multiple studies with same or different sheets</li>
                                             </ul>
+                                            
+                                            {showAppsScriptGuide && (
+                                                <div className="bg-white rounded-lg p-6 mt-4 border border-green-200 space-y-4">
+                                                    <h4 className="font-semibold text-green-900 mb-4 text-base">Complete Step-by-Step Setup:</h4>
+                                                    <ol className="text-sm text-green-800 space-y-4 list-decimal list-inside">
+                                                        <li>
+                                                            <strong>Create a Google Sheet:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                <li>Create a new Google Sheet or use an existing one for your results</li>
+                                                                <li>Name it something memorable (e.g., "Tree Test Results")</li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Open Apps Script Editor:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                <li>In your Google Sheet, go to <strong>Extensions → Apps Script</strong></li>
+                                                                <li>This opens the Apps Script editor in a new tab</li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Install the Script:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                <li>Delete any existing code in the editor</li>
+                                                                <li>In the Tree Test Creator, go to Storage tab → Google Sheets → click "Show Script"</li>
+                                                                <li>Click "Copy Script" to copy the entire script</li>
+                                                                <li>Paste the script into the Apps Script editor</li>
+                                                                <li>Click <strong>Save</strong> (or press Ctrl+S / Cmd+S)</li>
+                                                                <li><strong>IMPORTANT:</strong> Wait for "Saved" confirmation before proceeding</li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Deploy as Web App:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                <li>Click <strong>Deploy → New deployment</strong></li>
+                                                                <li>Click the <strong>gear icon (⚙️)</strong> next to "Select type"</li>
+                                                                <li>Choose <strong>"Web app"</strong> from the dropdown</li>
+                                                                <li>In the Configuration tab, set the following:
+                                                                    <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                                        <li><strong>Description:</strong> Enter a description (e.g., "Tree Test Results Webhook")</li>
+                                                                        <li><strong>Execute as:</strong> Keep "Me (your-email@gmail.com)" - this is correct</li>
+                                                                        <li><strong>Who has access:</strong> <strong className="text-red-600">IMPORTANT:</strong> Change this to <strong>"Anyone"</strong> (not "Only myself")</li>
+                                                                    </ul>
+                                                                </li>
+                                                                <li>Click <strong>Deploy</strong></li>
+                                                                <li>Google will show a dialog with your Web app URL - <strong>copy this URL</strong></li>
+                                                                <li>The URL looks like: <code className="text-xs bg-green-100 px-1 py-0.5 rounded">https://script.google.com/macros/s/ABC123.../exec</code></li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Configure in Creator:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                <li>Go back to the Tree Test Creator Storage configuration</li>
+                                                                <li>Select "Google Sheets" → "Apps Script (Recommended)"</li>
+                                                                <li>Paste the webhook URL into the "Webhook URL" field</li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Test Connection:</strong> Click "Test Connection" to verify it works
+                                                        </li>
+                                                    </ol>
+                                                    
+                                                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                                                        <p className="text-xs text-yellow-800 font-semibold mb-1">⚠️ Important Note:</p>
+                                                        <p className="text-xs text-yellow-700">
+                                                            You <strong>must</strong> set "Who has access" to <strong>"Anyone"</strong> for the webhook to work. 
+                                                            If you set it to "Only myself", the Tree Test app won't be able to send data to your sheet.
+                                                        </p>
+                                                    </div>
+                                                    
+                                                    <div className="mt-4 rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4">
+                                                        <h5 className="font-semibold text-blue-900 mb-2 text-sm">Using Multiple Studies with Google Sheets</h5>
+                                                        <p className="text-sm text-blue-800 mb-3">
+                                                            You can use the same Google Sheet and webhook URL for multiple studies, or use separate sheets for each study.
+                                                        </p>
+                                                        
+                                                        <div className="space-y-3">
+                                                            <div className="bg-white rounded p-3 border border-blue-200">
+                                                                <h6 className="font-semibold text-blue-900 mb-1 text-xs">Option 1: Same Sheet, Same Webhook URL</h6>
+                                                                <p className="text-xs text-blue-800 mb-2">
+                                                                    <strong>Use this when:</strong> You want all studies to write to the same Google Sheet.
+                                                                </p>
+                                                                <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                                                    <li>Install the Apps Script once in your Google Sheet</li>
+                                                                    <li>Deploy it and get the webhook URL</li>
+                                                                    <li>Use the <strong>same webhook URL</strong> for all studies that should use this sheet</li>
+                                                                    <li>All results will append to the same <code className="bg-blue-100 px-1 rounded">Results</code> tab</li>
+                                                                    <li>Each study's configuration is stored separately in the <code className="bg-blue-100 px-1 rounded">StudyConfigs</code> tab</li>
+                                                                </ul>
+                                                            </div>
+                                                            
+                                                            <div className="bg-white rounded p-3 border border-blue-200">
+                                                                <h6 className="font-semibold text-blue-900 mb-1 text-xs">Option 2: Different Sheets, Different Webhook URLs</h6>
+                                                                <p className="text-xs text-blue-800 mb-2">
+                                                                    <strong>Use this when:</strong> You want each study to write to its own separate Google Sheet.
+                                                                </p>
+                                                                <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                                                    <li>Create a separate Google Sheet for each study (or group of studies)</li>
+                                                                    <li>Install the Apps Script in each sheet separately</li>
+                                                                    <li>Deploy each script and get its unique webhook URL</li>
+                                                                    <li>Configure each study with its corresponding webhook URL</li>
+                                                                    <li>Results will be isolated in their respective sheets</li>
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="mt-4 rounded-lg border-l-4 border-purple-500 bg-purple-50 p-4">
+                                                        <h5 className="font-semibold text-purple-900 mb-2 text-sm">Managing Study Status in Google Sheets</h5>
+                                                        <p className="text-sm text-purple-800 mb-3">
+                                                            If you need to close or reopen a study but don't have access to the Tree Test Creator, you can manually edit the study configuration directly in Google Sheets.
+                                                        </p>
+                                                        
+                                                        <div className="bg-white rounded p-3 border border-purple-200">
+                                                            <h6 className="font-semibold text-purple-900 mb-2 text-xs">How to Close/Reopen a Study Manually:</h6>
+                                                            <ol className="text-xs text-purple-800 space-y-2 list-decimal list-inside">
+                                                                <li><strong>Open your Google Sheet</strong> (the one with the Apps Script installed)</li>
+                                                                <li><strong>Go to the <code className="bg-purple-100 px-1 rounded">StudyConfigs</code> tab</strong></li>
+                                                                <li><strong>Find your study:</strong> Column A contains Study ID, Column B contains JSON config</li>
+                                                                <li><strong>Edit the JSON in Column B:</strong> Find <code className="bg-purple-100 px-1 rounded">"accessStatus"</code> and change to <code className="bg-purple-100 px-1 rounded">"closed"</code> or <code className="bg-purple-100 px-1 rounded">"active"</code></li>
+                                                                <li><strong>Save the changes</strong> in Google Sheets</li>
+                                                            </ol>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <p className="text-xs text-green-700 mt-4 italic">
+                                                        The Apps Script automatically creates the correct column headers and appends participant results as new rows.
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    
-                                    <div className="mt-4 rounded-lg border-l-4 border-purple-500 bg-purple-50 p-4">
-                                        <h4 className="font-semibold text-purple-900 mb-2">Managing Study Status in Google Sheets</h4>
-                                        <p className="text-sm text-purple-800 mb-3">
-                                            If you need to close or reopen a study but don't have access to the Tree Test Creator (e.g., your computer is off or you're on a different device), you can manually edit the study configuration directly in Google Sheets.
-                                        </p>
-                                        
-                                        <div className="bg-white rounded p-3 border border-purple-200 mb-3">
-                                            <h5 className="font-semibold text-purple-900 mb-2 text-sm">How to Close/Reopen a Study Manually:</h5>
-                                            <ol className="text-xs text-purple-800 space-y-2 list-decimal list-inside">
-                                                <li><strong>Open your Google Sheet</strong> (the one with the Apps Script installed)</li>
-                                                <li><strong>Go to the <code className="bg-purple-100 px-1 rounded">StudyConfigs</code> tab</strong></li>
-                                                <li><strong>Find your study:</strong>
-                                                    <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                                                        <li>Column A contains the Study ID (e.g., <code className="bg-purple-100 px-1 rounded">study-1234567890-abc123</code>)</li>
-                                                        <li>Column B contains the JSON configuration</li>
-                                                    </ul>
-                                                </li>
-                                                <li><strong>Edit the JSON in Column B:</strong>
-                                                    <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                                                        <li>Find the <code className="bg-purple-100 px-1 rounded">"accessStatus"</code> field</li>
-                                                        <li>To <strong>close</strong> the study: Change it to <code className="bg-purple-100 px-1 rounded">"closed"</code></li>
-                                                        <li>To <strong>reopen</strong> the study: Change it to <code className="bg-purple-100 px-1 rounded">"active"</code></li>
-                                                        <li>Optionally add/update <code className="bg-purple-100 px-1 rounded">"closedAt"</code> with a timestamp when closing (e.g., <code className="bg-purple-100 px-1 rounded">"closedAt": "2025-01-15T10:30:00.000Z"</code>)</li>
-                                                    </ul>
-                                                </li>
-                                                <li><strong>Save the changes</strong> in Google Sheets</li>
-                                            </ol>
-                                        </div>
-                                        
-                                        <div className="bg-white rounded p-3 border border-purple-200">
-                                            <h5 className="font-semibold text-purple-900 mb-2 text-sm">Example JSON Edit:</h5>
-                                            <div className="space-y-2">
-                                                <div>
-                                                    <p className="text-xs text-purple-700 mb-1"><strong>Before (Active):</strong></p>
-                                                    <pre className="text-xs bg-purple-100 p-2 rounded border border-purple-200 overflow-x-auto">{`{
-  "id": "study-1234567890-abc123",
-  "name": "My Study",
-  "accessStatus": "active",
-  ...
-}`}</pre>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-purple-700 mb-1"><strong>After (Closed):</strong></p>
-                                                    <pre className="text-xs bg-purple-100 p-2 rounded border border-purple-200 overflow-x-auto">{`{
-  "id": "study-1234567890-abc123",
-  "name": "My Study",
-  "accessStatus": "closed",
-  "closedAt": "2025-01-15T10:30:00.000Z",
-  ...
-}`}</pre>
-                                                </div>
+                                </div>
+
+                                {/* Method 2: OAuth API Card */}
+                                <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-6">
+                                    <div className="flex items-start gap-3 mb-4">
+                                        <Database className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h3 className="text-lg font-semibold text-blue-900">Method 2: OAuth API (Advanced)</h3>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setShowOAuthGuide(!showOAuthGuide)}
+                                                    className="text-xs"
+                                                >
+                                                    {showOAuthGuide ? 'Hide' : 'Show'} Setup Guide
+                                                </Button>
                                             </div>
+                                            <p className="text-sm text-blue-800 mb-3">
+                                                <strong>Best for:</strong> Advanced users who want direct API access and more control.
+                                            </p>
+                                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                                <li>Direct access to Google Sheets API</li>
+                                                <li>More control over data structure</li>
+                                                <li>Requires Google Cloud Console setup</li>
+                                                <li>OAuth 2.0 authentication required</li>
+                                            </ul>
+                                            
+                                            {showOAuthGuide && (
+                                                <div className="bg-white rounded-lg p-6 mt-4 border border-blue-200 space-y-4">
+                                                    <h4 className="font-semibold text-blue-900 mb-4 text-base">Complete Step-by-Step Setup:</h4>
+                                                    <ol className="text-sm text-blue-800 space-y-4 list-decimal list-inside">
+                                                        <li>
+                                                            <strong>Create Google Cloud Project:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                <li>Go to <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="underline text-blue-600 hover:text-blue-700">Google Cloud Console</a></li>
+                                                                <li>Create a new project or select existing one</li>
+                                                                <li>Enable Google Sheets API</li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Configure OAuth:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                <li>Create OAuth 2.0 credentials</li>
+                                                                <li>Add authorized redirect URIs</li>
+                                                                <li>Copy Client ID and Client Secret</li>
+                                                            </ul>
+                                                        </li>
+                                                        <li>
+                                                            <strong>Connect in Creator:</strong>
+                                                            <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                <li>Click "Connect to Google"</li>
+                                                                <li>Authorize the app to access your Google Sheets</li>
+                                                                <li>Enter your Google Sheet ID (from the sheet URL)</li>
+                                                                <li>Optionally specify sheet tab name</li>
+                                                            </ul>
+                                                        </li>
+                                                    </ol>
+                                                    
+                                                    <div className="mt-4 rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4">
+                                                        <h5 className="font-semibold text-blue-900 mb-2 text-sm">Getting Your Sheet ID</h5>
+                                                        <p className="text-sm text-blue-800 mb-2">
+                                                            Your Google Sheet ID is found in the sheet URL:
+                                                        </p>
+                                                        <p className="text-xs text-blue-700 font-mono bg-white p-2 rounded border border-blue-200">
+                                                            https://docs.google.com/spreadsheets/d/<strong className="text-blue-900">[SHEET_ID]</strong>/edit
+                                                        </p>
+                                                        <p className="text-xs text-blue-600 mt-2">
+                                                            Copy the long string between <code>/d/</code> and <code>/edit</code>.
+                                                        </p>
+                                                    </div>
+                                                    
+                                                    <p className="text-xs text-blue-700 mt-4 italic">
+                                                        OAuth API provides direct access to Google Sheets API with full read/write capabilities.
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
-                                        
-                                        <p className="text-xs text-purple-600 mt-3 italic">
-                                            ⚠️ <strong>Important:</strong> Make sure the JSON is valid after editing. Invalid JSON will cause errors. The study status change takes effect immediately - participants trying to access a closed study will see a "Study Closed" message.
-                                        </p>
                                     </div>
-                                </div>
-
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Method 2: OAuth API (Advanced)</h3>
-                                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                        <p className="text-sm text-blue-800 mb-3">
-                                            <strong>Best for:</strong> Advanced users who want direct API access and more control.
-                                        </p>
-                                        <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-                                            <li><strong>Create Google Cloud Project:</strong>
-                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                                                    <li>Go to <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
-                                                    <li>Create a new project or select existing one</li>
-                                                    <li>Enable Google Sheets API</li>
-                                                </ul>
-                                            </li>
-                                            <li><strong>Configure OAuth:</strong>
-                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                                                    <li>Create OAuth 2.0 credentials</li>
-                                                    <li>Add authorized redirect URIs</li>
-                                                    <li>Copy Client ID and Client Secret</li>
-                                                </ul>
-                                            </li>
-                                            <li><strong>Connect in Creator:</strong>
-                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                                                    <li>Click "Connect to Google"</li>
-                                                    <li>Authorize the app to access your Google Sheets</li>
-                                                    <li>Enter your Google Sheet ID (from the sheet URL)</li>
-                                                    <li>Optionally specify sheet tab name</li>
-                                                </ul>
-                                            </li>
-                                        </ol>
-                                        <p className="text-xs text-blue-700 mt-3 italic">
-                                            OAuth API provides direct access to Google Sheets API with full read/write capabilities.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4">
-                                    <h4 className="font-semibold text-blue-900 mb-2">Getting Your Sheet ID</h4>
-                                    <p className="text-sm text-blue-800 mb-2">
-                                        Your Google Sheet ID is found in the sheet URL:
-                                    </p>
-                                    <p className="text-xs text-blue-700 font-mono bg-white p-2 rounded border border-blue-200">
-                                        https://docs.google.com/spreadsheets/d/<strong className="text-blue-900">[SHEET_ID]</strong>/edit
-                                    </p>
-                                    <p className="text-xs text-blue-600 mt-2">
-                                        Copy the long string between <code>/d/</code> and <code>/edit</code>.
-                                    </p>
                                 </div>
                             </div>
                         </section>
@@ -522,94 +627,189 @@ export function Help() {
                                         <div className="flex items-start gap-3 mb-4">
                                             <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
                                             <div className="flex-1">
-                                                <h4 className="font-semibold text-green-900 mb-2 text-lg">Supabase</h4>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h4 className="font-semibold text-green-900 text-lg">Supabase</h4>
+                                                    <div className="relative" ref={supabaseGuideRef}>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setShowSupabaseGuide(!showSupabaseGuide)}
+                                                            className="text-xs"
+                                                        >
+                                                            {showSupabaseGuide ? 'Hide' : 'Show'} Setup Guide
+                                                        </Button>
+                                                    </div>
+                                                </div>
                                                 <p className="text-sm text-green-800 mb-4">
                                                     PostgreSQL database with auto-generated REST API. PostgREST automatically creates REST endpoints from your database schema. <strong>No middleware required!</strong>
                                                 </p>
                                                 
-                                                <div className="bg-white rounded-lg p-4 mb-4 border border-green-200">
-                                                    <h5 className="font-semibold text-green-900 mb-3">Step-by-Step Setup:</h5>
-                                                    <ol className="text-sm text-green-800 space-y-3 list-decimal list-inside">
-                                                        <li>
-                                                            <strong>Create a Supabase Project:</strong>
-                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
-                                                                <li>Go to <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="underline">supabase.com</a> and sign up</li>
-                                                                <li>Create a new project (free tier available)</li>
-                                                                <li>Wait for the database to be provisioned</li>
+                                                {showSupabaseGuide && (
+                                                    <div className="bg-white rounded-lg p-6 mb-4 border border-green-200 space-y-4">
+                                                        <h5 className="font-semibold text-green-900 mb-4 text-base">Complete Step-by-Step Setup:</h5>
+                                                        <ol className="text-sm text-green-800 space-y-4 list-decimal list-inside">
+                                                            <li>
+                                                                <strong>Create a Supabase Project:</strong>
+                                                                <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                    <li>Go to <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="underline text-blue-600 hover:text-blue-700">supabase.com</a> and sign up</li>
+                                                                    <li>Click "New Project"</li>
+                                                                    <li>Fill in project name, database password, and region</li>
+                                                                    <li>Click "Create new project" and wait 2-3 minutes for provisioning</li>
+                                                                </ul>
+                                                            </li>
+                                                            <li>
+                                                                <strong>Create the Studies Table:</strong>
+                                                                <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                    <li>In Supabase dashboard, go to "Table Editor" (left sidebar)</li>
+                                                                    <li>Click "New Table"</li>
+                                                                    <li>Name: <code className="bg-green-100 px-1 rounded">studies</code></li>
+                                                                    <li>Click "Save"</li>
+                                                                    <li>Add these columns:
+                                                                        <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                                            <li><code className="bg-green-100 px-1 rounded">id</code> - Type: Text, Primary Key: ✓, Required: ✓</li>
+                                                                            <li><code className="bg-green-100 px-1 rounded">config</code> - Type: JSONB, Required: ✓</li>
+                                                                            <li><code className="bg-green-100 px-1 rounded">created_at</code> - Type: Timestamp, Default: <code className="bg-green-100 px-1 rounded">now()</code></li>
+                                                                            <li><code className="bg-green-100 px-1 rounded">updated_at</code> - Type: Timestamp, Default: <code className="bg-green-100 px-1 rounded">now()</code></li>
+                                                                        </ul>
+                                                                    </li>
+                                                                    <li>Click "Save"</li>
+                                                                </ul>
+                                                            </li>
+                                                            <li>
+                                                                <strong>Create the Results Table:</strong>
+                                                                <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                    <li>Click "New Table" again</li>
+                                                                    <li>Name: <code className="bg-green-100 px-1 rounded">results</code></li>
+                                                                    <li>Click "Save"</li>
+                                                                    <li>Add these columns:
+                                                                        <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                                            <li><code className="bg-green-100 px-1 rounded">id</code> - Type: UUID, Primary Key: ✓, Default: <code className="bg-green-100 px-1 rounded">gen_random_uuid()</code></li>
+                                                                            <li><code className="bg-green-100 px-1 rounded">study_id</code> - Type: Text, Required: ✓</li>
+                                                                            <li><code className="bg-green-100 px-1 rounded">result_data</code> - Type: JSONB, Required: ✓</li>
+                                                                            <li><code className="bg-green-100 px-1 rounded">created_at</code> - Type: Timestamp, Default: <code className="bg-green-100 px-1 rounded">now()</code></li>
+                                                                        </ul>
+                                                                    </li>
+                                                                    <li>Click "Save"</li>
+                                                                </ul>
+                                                            </li>
+                                                            <li>
+                                                                <strong>Configure Row Level Security (RLS):</strong>
+                                                                <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                    <li>Go to "Authentication" → "Policies" (left sidebar)</li>
+                                                                    <li><strong>For <code className="bg-green-100 px-1 rounded">studies</code> table:</strong>
+                                                                        <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                                            <li>Enable RLS: Toggle "Enable Row Level Security"</li>
+                                                                            <li>Click "New Policy"</li>
+                                                                            <li>Name: "Allow public read and write"</li>
+                                                                            <li>Allowed operation: SELECT, INSERT, UPDATE</li>
+                                                                            <li>Policy definition: <code className="bg-green-100 px-1 rounded">true</code></li>
+                                                                            <li>Click "Review" → "Save policy"</li>
+                                                                        </ul>
+                                                                    </li>
+                                                                    <li><strong>For <code className="bg-green-100 px-1 rounded">results</code> table:</strong>
+                                                                        <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                                            <li>Enable RLS: Toggle "Enable Row Level Security"</li>
+                                                                            <li>Click "New Policy"</li>
+                                                                            <li>Name: "Allow public insert and read"</li>
+                                                                            <li>Allowed operation: SELECT, INSERT</li>
+                                                                            <li>Policy definition: <code className="bg-green-100 px-1 rounded">true</code></li>
+                                                                            <li>Click "Review" → "Save policy"</li>
+                                                                        </ul>
+                                                                    </li>
+                                                                </ul>
+                                                            </li>
+                                                            <li>
+                                                                <strong>Create Database Functions (Required for Status Endpoints):</strong>
+                                                                <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                    <li>Go to "SQL Editor" (left sidebar)</li>
+                                                                    <li>Click "New Query"</li>
+                                                                    <li>Click "Show Script" below to view the SQL code</li>
+                                                                    <li>Copy the entire script and paste it into the SQL Editor</li>
+                                                                    <li>Click "Run" (or press Ctrl+Enter)</li>
+                                                                    <li>You should see "Success. No rows returned" - this means the functions were created successfully</li>
+                                                                </ul>
+                                                                <div className="mt-3 ml-6">
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => setShowSupabaseScript(!showSupabaseScript)}
+                                                                            className="text-xs"
+                                                                        >
+                                                                            {showSupabaseScript ? 'Hide' : 'Show'} Script
+                                                                        </Button>
+                                                                        {showSupabaseScript && (
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                onClick={async () => {
+                                                                                    const scriptContent = getSupabaseScriptContent();
+                                                                                    await navigator.clipboard.writeText(scriptContent);
+                                                                                    setSupabaseScriptCopied(true);
+                                                                                    setTimeout(() => setSupabaseScriptCopied(false), 2000);
+                                                                                }}
+                                                                                className="gap-2 text-xs"
+                                                                            >
+                                                                                {supabaseScriptCopied ? (
+                                                                                    <>
+                                                                                        <Check className="h-4 w-4" />
+                                                                                        Copied!
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        <Copy className="h-4 w-4" />
+                                                                                        Copy Script
+                                                                                    </>
+                                                                                )}
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                    {showSupabaseScript && (
+                                                                        <div className="relative">
+                                                                            <Textarea
+                                                                                readOnly
+                                                                                value={getSupabaseScriptContent()}
+                                                                                className="font-mono text-xs min-h-[300px] max-h-[500px] overflow-auto"
+                                                                                onClick={(e) => {
+                                                                                    (e.target as HTMLTextAreaElement).select();
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </li>
+                                                            <li>
+                                                                <strong>Get Your API URL and Key:</strong>
+                                                                <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                    <li>Go to "Settings" → "API" (left sidebar)</li>
+                                                                    <li>Copy your "Project URL" (e.g., <code className="bg-green-100 px-1 rounded">https://xxxxx.supabase.co</code>)</li>
+                                                                    <li>Copy your "anon" public key (the long string starting with <code className="bg-green-100 px-1 rounded">eyJ...</code>)</li>
+                                                                </ul>
+                                                            </li>
+                                                            <li>
+                                                                <strong>Configure in Tree Test Suite:</strong>
+                                                                <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
+                                                                    <li>In your deployed app, go to Settings (gear icon) or open a study → Storage tab</li>
+                                                                    <li>Select "Custom API"</li>
+                                                                    <li>Enter API Endpoint URL: <code className="bg-green-100 px-1 rounded">https://xxxxx.supabase.co/rest/v1</code> (add <code className="bg-green-100 px-1 rounded">/rest/v1</code> to your Project URL)</li>
+                                                                    <li>Select authentication: "API Key Header"</li>
+                                                                    <li>Enter API Key: Paste your "anon" public key</li>
+                                                                    <li>Click "Test Connection" to verify</li>
+                                                                </ul>
+                                                            </li>
+                                                        </ol>
+                                                        
+                                                        <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded">
+                                                            <h6 className="font-semibold text-blue-900 mb-2 text-sm">Important Notes:</h6>
+                                                            <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                                                                <li>Make sure to add <code className="bg-blue-100 px-1 rounded">/rest/v1</code> to your Supabase Project URL when configuring</li>
+                                                                <li>The SQL functions are required for status endpoints to work correctly</li>
+                                                                <li>For production use, consider using "service_role" key instead of "anon" key for better security</li>
+                                                                <li>Free tier includes 500MB database and 2GB bandwidth</li>
                                                             </ul>
-                                                        </li>
-                                                        <li>
-                                                            <strong>Create the Studies Table:</strong>
-                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
-                                                                <li>Go to "Table Editor" in your Supabase dashboard</li>
-                                                                <li>Click "New Table" and name it <code className="bg-green-100 px-1 rounded">studies</code></li>
-                                                                <li>Add these columns:
-                                                                    <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
-                                                                        <li><code className="bg-green-100 px-1 rounded">id</code> - Text (Primary Key)</li>
-                                                                        <li><code className="bg-green-100 px-1 rounded">config</code> - JSONB (to store the full study config)</li>
-                                                                        <li><code className="bg-green-100 px-1 rounded">created_at</code> - Timestamp (default: now())</li>
-                                                                        <li><code className="bg-green-100 px-1 rounded">updated_at</code> - Timestamp (default: now())</li>
-                                                                    </ul>
-                                                                </li>
-                                                            </ul>
-                                                        </li>
-                                                        <li>
-                                                            <strong>Create the Results Table:</strong>
-                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
-                                                                <li>Create another table named <code className="bg-green-100 px-1 rounded">results</code></li>
-                                                                <li>Add these columns:
-                                                                    <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
-                                                                        <li><code className="bg-green-100 px-1 rounded">id</code> - UUID (Primary Key, auto-generated)</li>
-                                                                        <li><code className="bg-green-100 px-1 rounded">study_id</code> - Text (Foreign Key to studies.id)</li>
-                                                                        <li><code className="bg-green-100 px-1 rounded">result_data</code> - JSONB (to store participant results)</li>
-                                                                        <li><code className="bg-green-100 px-1 rounded">created_at</code> - Timestamp (default: now())</li>
-                                                                    </ul>
-                                                                </li>
-                                                            </ul>
-                                                        </li>
-                                                        <li>
-                                                            <strong>Configure Row Level Security (RLS):</strong>
-                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
-                                                                <li>Go to "Authentication" → "Policies"</li>
-                                                                <li>For <code className="bg-green-100 px-1 rounded">studies</code> table: Enable RLS, create policy "Allow public read" for SELECT</li>
-                                                                <li>For <code className="bg-green-100 px-1 rounded">results</code> table: Enable RLS, create policy "Allow public insert" for INSERT</li>
-                                                                <li>Alternatively, disable RLS for testing (not recommended for production)</li>
-                                                            </ul>
-                                                        </li>
-                                                        <li>
-                                                            <strong>Get Your API URL and Key:</strong>
-                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
-                                                                <li>Go to "Settings" → "API"</li>
-                                                                <li>Copy your "Project URL" (e.g., <code className="bg-green-100 px-1 rounded">https://xxxxx.supabase.co</code>)</li>
-                                                                <li>Copy your "anon" or "service_role" key</li>
-                                                            </ul>
-                                                        </li>
-                                                        <li>
-                                                            <strong>Configure in Tree Test Suite:</strong>
-                                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-xs">
-                                                                <li>In Settings or Study Storage Editor, select "Custom API"</li>
-                                                                <li>Enter your Supabase Project URL as the "API Endpoint URL"</li>
-                                                                <li>Select "API Key Header" as authentication type</li>
-                                                                <li>Enter your Supabase API key</li>
-                                                                <li>Click "Test Connection" to verify</li>
-                                                            </ul>
-                                                        </li>
-                                                    </ol>
-                                                </div>
-
-                                                <div className="bg-white rounded-lg p-4 border border-green-200">
-                                                    <h5 className="font-semibold text-green-900 mb-2">Supabase API Endpoint Mapping:</h5>
-                                                    <p className="text-xs text-green-800 mb-2">Supabase auto-generates these endpoints from your tables:</p>
-                                                    <ul className="text-xs text-green-700 space-y-1 font-mono">
-                                                        <li>GET /rest/v1/studies?id=eq.{'{'}studyId{'}'} → GET /studies/:id</li>
-                                                        <li>POST /rest/v1/studies → POST /studies</li>
-                                                        <li>PATCH /rest/v1/studies?id=eq.{'{'}studyId{'}'} → PUT /studies/:id</li>
-                                                        <li>POST /rest/v1/results → POST /studies/:id/results</li>
-                                                    </ul>
-                                                    <p className="text-xs text-green-600 mt-3 italic">
-                                                        Note: You may need to create database functions or use Supabase Edge Functions for status endpoints (/status). See Supabase documentation for advanced setup.
-                                                    </p>
-                                                </div>
+                                                        </div>
+                                                    </div>
+                                                )}
 
                                                 <ul className="text-xs text-green-700 space-y-1 list-disc list-inside mt-4">
                                                     <li>Free tier available (500MB database, 2GB bandwidth)</li>
