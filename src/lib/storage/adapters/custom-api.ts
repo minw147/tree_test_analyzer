@@ -14,7 +14,14 @@ export class CustomApiAdapter implements StorageAdapter {
         };
 
         if (this.config.authType === 'api-key' && this.config.apiKey) {
-            headers['X-API-Key'] = this.config.apiKey;
+            // Supabase PostgREST requires 'apikey' header (lowercase)
+            // Other APIs typically use 'X-API-Key'
+            const isSupabase = this.config.endpointUrl?.includes('supabase.co');
+            if (isSupabase) {
+                headers['apikey'] = this.config.apiKey;
+            } else {
+                headers['X-API-Key'] = this.config.apiKey;
+            }
         } else if (this.config.authType === 'bearer-token' && this.config.apiKey) {
             headers['Authorization'] = `Bearer ${this.config.apiKey}`;
         }
