@@ -162,16 +162,7 @@ export function convertResultsToUploadedData(
     studyConfig: StudyConfig,
     participantResults: ParticipantResult[]
 ): Omit<UploadedData, "id" | "createdAt" | "updatedAt"> {
-    // Debug: Log raw results to check structure
-    console.log("convertResultsToUploadedData: Raw participantResults", participantResults);
-    console.log("convertResultsToUploadedData: Sample taskResult", participantResults[0]?.taskResults[0]);
-    
     const participants = convertParticipants(participantResults, studyConfig.tasks);
-    
-    // Debug: Log converted participants to check pathTaken
-    console.log("convertResultsToUploadedData: Converted participants", participants);
-    console.log("convertResultsToUploadedData: Sample converted taskResult", participants[0]?.taskResults[0]);
-    
     const tasks = convertTasks(studyConfig);
     const treeStructure = convertTree(studyConfig.tree);
 
