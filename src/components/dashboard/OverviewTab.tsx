@@ -156,7 +156,14 @@ export function OverviewTab({ data }: OverviewTabProps) {
                         <CardTitle className="text-sm font-medium">Median Time</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{Math.round(stats.medianCompletionTime / 60)}m {Math.round(stats.medianCompletionTime % 60)}s</div>
+                        <div className="text-2xl font-bold">
+                            {(() => {
+                                const totalSeconds = Math.round(stats.medianCompletionTime);
+                                const minutes = Math.floor(totalSeconds / 60);
+                                const seconds = totalSeconds % 60;
+                                return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+                            })()}
+                        </div>
                         <p className="text-xs text-muted-foreground">
                             Range: {Math.round(stats.shortestCompletionTime)}s - {Math.round(stats.longestCompletionTime)}s
                         </p>
