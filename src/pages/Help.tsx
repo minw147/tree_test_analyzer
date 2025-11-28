@@ -698,25 +698,52 @@ $$;`;
                                                                     <li>Go to "Authentication" → "Policies" (left sidebar)</li>
                                                                     <li><strong>For <code className="bg-green-100 px-1 rounded">studies</code> table:</strong>
                                                                         <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                                                                            <li>Enable RLS: Toggle "Enable Row Level Security"</li>
-                                                                            <li>Click "New Policy"</li>
-                                                                            <li>Name: "Allow public read and write"</li>
-                                                                            <li>Allowed operation: SELECT, INSERT, UPDATE</li>
-                                                                            <li>Policy definition: <code className="bg-green-100 px-1 rounded">true</code></li>
+                                                                            <li>Enable RLS: Toggle "Enable Row Level Security" switch</li>
+                                                                            <li>Click "New Policy" button</li>
+                                                                            <li>In the policy form:
+                                                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                                                    <li><strong>Policy Name:</strong> Enter "Allow public read and write"</li>
+                                                                                    <li><strong>Table (on clause):</strong> Should show <code className="bg-green-100 px-1 rounded">public.studies</code></li>
+                                                                                    <li><strong>Policy Behavior (as clause):</strong> Keep "Permissive" (default)</li>
+                                                                                    <li><strong>Policy Command (for clause):</strong> Select "ALL" (or create separate policies for SELECT, INSERT, UPDATE)</li>
+                                                                                    <li><strong>Target Roles (to clause):</strong> Keep default (public)</li>
+                                                                                    <li>In the SQL code editor, the <code className="bg-green-100 px-1 rounded">using</code> clause should contain: <code className="bg-green-100 px-1 rounded">true</code></li>
+                                                                                </ul>
+                                                                            </li>
                                                                             <li>Click "Review" → "Save policy"</li>
                                                                         </ul>
                                                                     </li>
                                                                     <li><strong>For <code className="bg-green-100 px-1 rounded">results</code> table:</strong>
                                                                         <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                                                                            <li>Enable RLS: Toggle "Enable Row Level Security"</li>
-                                                                            <li>Click "New Policy"</li>
-                                                                            <li>Name: "Allow public insert and read"</li>
-                                                                            <li>Allowed operation: SELECT, INSERT</li>
-                                                                            <li>Policy definition: <code className="bg-green-100 px-1 rounded">true</code></li>
+                                                                            <li>Enable RLS: Toggle "Enable Row Level Security" switch</li>
+                                                                            <li>Click "New Policy" button</li>
+                                                                            <li>In the policy form:
+                                                                                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                                                    <li><strong>Policy Name:</strong> Enter "Allow public insert and read"</li>
+                                                                                    <li><strong>Table (on clause):</strong> Should show <code className="bg-green-100 px-1 rounded">public.results</code></li>
+                                                                                    <li><strong>Policy Behavior (as clause):</strong> Keep "Permissive" (default)</li>
+                                                                                    <li><strong>Policy Command (for clause):</strong> Select "ALL" (or create separate policies for SELECT and INSERT)</li>
+                                                                                    <li><strong>Target Roles (to clause):</strong> Keep default (public)</li>
+                                                                                    <li>In the SQL code editor, the <code className="bg-green-100 px-1 rounded">using</code> clause should contain: <code className="bg-green-100 px-1 rounded">true</code></li>
+                                                                                </ul>
+                                                                            </li>
                                                                             <li>Click "Review" → "Save policy"</li>
                                                                         </ul>
                                                                     </li>
                                                                 </ul>
+                                                                <div className="mt-2 ml-6 p-2 bg-blue-50 border border-blue-200 rounded">
+                                                                    <p className="text-xs text-blue-800 font-semibold mb-2">💡 Example SQL Code:</p>
+                                                                    <p className="text-xs text-blue-700 mb-2">For the <code className="bg-blue-100 px-1 rounded">studies</code> table, your SQL should look like:</p>
+                                                                    <pre className="text-xs bg-white p-2 rounded border border-blue-200 overflow-x-auto font-mono">{`create policy "Allow public read and write"
+on "public"."studies"
+as PERMISSIVE
+for ALL
+to public
+using (true);`}</pre>
+                                                                    <p className="text-xs text-blue-700 mt-2">
+                                                                        <strong>Note:</strong> If you see a <code className="bg-blue-100 px-1 rounded">with check</code> clause, you can either uncheck "Use check expression" or leave it empty. The <code className="bg-blue-100 px-1 rounded">using (true)</code> is the important part.
+                                                                    </p>
+                                                                </div>
                                                             </li>
                                                             <li>
                                                                 <strong>Create Database Functions (Required for Status Endpoints):</strong>
@@ -781,9 +808,23 @@ $$;`;
                                                             <li>
                                                                 <strong>Get Your API URL and Key:</strong>
                                                                 <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-xs">
-                                                                    <li>Go to "Settings" → "API" (left sidebar)</li>
-                                                                    <li>Copy your "Project URL" (e.g., <code className="bg-green-100 px-1 rounded">https://xxxxx.supabase.co</code>)</li>
-                                                                    <li>Copy your "anon" public key (the long string starting with <code className="bg-green-100 px-1 rounded">eyJ...</code>)</li>
+                                                                    <li><strong>Get Project URL:</strong>
+                                                                        <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                                            <li>Go to "Settings" → "General" (left sidebar)</li>
+                                                                            <li>Find the "Reference ID" section</li>
+                                                                            <li>Your Project URL is: <code className="bg-green-100 px-1 rounded">https://[reference-id].supabase.co</code></li>
+                                                                            <li>Or look for "API URL" / "Project URL" in the General settings</li>
+                                                                        </ul>
+                                                                    </li>
+                                                                    <li><strong>Get Publishable Key:</strong>
+                                                                        <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                                                                            <li>Go to "Settings" → "API" → "API Keys" (left sidebar)</li>
+                                                                            <li>Make sure you're on the <strong>"Publishable and secret API keys"</strong> tab</li>
+                                                                            <li>Copy your <strong>"Publishable key"</strong> from the "Publishable key" section (it starts with <code className="bg-green-100 px-1 rounded">sb_publishable_</code>)</li>
+                                                                            <li>Click the copy icon next to the key to copy it</li>
+                                                                        </ul>
+                                                                    </li>
+                                                                    <li><strong>Alternative (Legacy Keys):</strong> If you prefer to use legacy keys, switch to the "Legacy anon, service_role API keys" tab and copy the "anon" key (starts with <code className="bg-green-100 px-1 rounded">eyJ...</code>)</li>
                                                                 </ul>
                                                             </li>
                                                             <li>
@@ -793,7 +834,7 @@ $$;`;
                                                                     <li>Select "Custom API"</li>
                                                                     <li>Enter API Endpoint URL: <code className="bg-green-100 px-1 rounded">https://xxxxx.supabase.co/rest/v1</code> (add <code className="bg-green-100 px-1 rounded">/rest/v1</code> to your Project URL)</li>
                                                                     <li>Select authentication: "API Key Header"</li>
-                                                                    <li>Enter API Key: Paste your "anon" public key</li>
+                                                                    <li>Enter API Key: Paste your "Publishable key" (or legacy anon key if using that)</li>
                                                                     <li>Click "Test Connection" to verify</li>
                                                                 </ul>
                                                             </li>
