@@ -25,16 +25,45 @@ export function StorageEditor({ config, onChange }: StorageEditorProps) {
     const [saveAsDefault, setSaveAsDefault] = useState(false);
     const [usingGlobalConfig, setUsingGlobalConfig] = useState(false);
     const tooltipRef = useRef<HTMLDivElement>(null);
+    const hasAutoPopulatedRef = useRef(false);
+
+    // Auto-populate Custom API from global settings if config is empty
+    useEffect(() => {
+        if (config.type === 'custom-api' && !hasAutoPopulatedRef.current) {
+            const globalConfig = getGlobalCustomApiConfig();
+            if (globalConfig) {
+                // Only populate if current config is completely empty
+                const isEmpty = !config.endpointUrl && !config.authType && !config.apiKey;
+                if (isEmpty) {
+                    onChange({
+                        ...config,
+                        endpointUrl: globalConfig.endpointUrl,
+                        authType: globalConfig.authType,
+                        apiKey: globalConfig.apiKey,
+                    });
+                    hasAutoPopulatedRef.current = true;
+                }
+            }
+        }
+        // Reset flag when type changes away from custom-api
+        if (config.type !== 'custom-api') {
+            hasAutoPopulatedRef.current = false;
+        }
+    }, [config.type]); // Only depend on type, not full config
 
     // Check if using global config
     useEffect(() => {
         if (config.type === 'custom-api') {
             const globalConfig = getGlobalCustomApiConfig();
-            if (globalConfig && 
-                globalConfig.endpointUrl === config.endpointUrl &&
-                globalConfig.authType === config.authType &&
-                globalConfig.apiKey === config.apiKey) {
-                setUsingGlobalConfig(true);
+            if (globalConfig) {
+                // Check if current config matches global config
+                if (globalConfig.endpointUrl === config.endpointUrl &&
+                    globalConfig.authType === config.authType &&
+                    globalConfig.apiKey === config.apiKey) {
+                    setUsingGlobalConfig(true);
+                } else {
+                    setUsingGlobalConfig(false);
+                }
             } else {
                 setUsingGlobalConfig(false);
             }
@@ -61,7 +90,7 @@ export function StorageEditor({ config, onChange }: StorageEditorProps) {
     }, [showCustomApiTooltip]);
 
     const handleTypeChange = (type: StorageType) => {
-        const newConfig: StorageConfig = {
+        let newConfig: StorageConfig = {
             ...config,
             type,
         };
@@ -69,6 +98,22 @@ export function StorageEditor({ config, onChange }: StorageEditorProps) {
         // Initialize Google Sheets method if not set
         if (type === 'google-sheets' && !newConfig.googleSheetsMethod) {
             newConfig.googleSheetsMethod = 'apps-script';
+        }
+        
+        // Auto-populate Custom API from global settings if config is empty
+        if (type === 'custom-api') {
+            const globalConfig = getGlobalCustomApiConfig();
+            if (globalConfig) {
+                // Only populate if current config is empty/not set
+                if (!newConfig.endpointUrl && !newConfig.authType && !newConfig.apiKey) {
+                    newConfig = {
+                        ...newConfig,
+                        endpointUrl: globalConfig.endpointUrl,
+                        authType: globalConfig.authType,
+                        apiKey: globalConfig.apiKey,
+                    };
+                }
+            }
         }
         
         onChange(newConfig);
