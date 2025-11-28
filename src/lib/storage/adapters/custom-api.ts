@@ -45,33 +45,95 @@ export class CustomApiAdapter implements StorageAdapter {
                 updated_at: new Date().toISOString(),
             } : config;
 
-            // Try PUT first (update existing), fall back to POST (create new)
-            let response = await fetch(`${this.config.endpointUrl}/studies/${config.id}`, {
-                method: 'PUT',
-                headers: this.getHeaders(),
-                body: JSON.stringify(payload),
-            });
-
-            // If PUT returns 404, try POST to create new
-            if (response.status === 404) {
-                const createPayload = isSupabase ? {
-                    ...payload,
-                    created_at: config.createdAt || new Date().toISOString(),
-                } : payload;
-                
-                response = await fetch(`${this.config.endpointUrl}/studies`, {
-                    method: 'POST',
+            if (isSupabase) {
+                // For Supabase, use upsert pattern: try PATCH first, if no rows updated, use POST
+                // If POST gets 409, the study exists, so retry with PATCH
+                let response = await fetch(`${this.config.endpointUrl}/studies?id=eq.${config.id}`, {
+                    method: 'PATCH',
                     headers: this.getHeaders(),
-                    body: JSON.stringify(createPayload),
+                    body: JSON.stringify(payload),
                 });
-            }
 
-            if (!response.ok) {
-                const errorText = await response.text().catch(() => 'Unknown error');
-                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-            }
+                // Check if PATCH actually updated a row
+                if (response.ok) {
+                    const responseText = await response.text();
+                    // If PATCH returns empty array, no rows were updated (study doesn't exist)
+                    if (responseText === '[]') {
+                        // Study doesn't exist, create it
+                        const createPayload = {
+                            ...payload,
+                            created_at: config.createdAt || new Date().toISOString(),
+                        };
+                        
+                        response = await fetch(`${this.config.endpointUrl}/studies`, {
+                            method: 'POST',
+                            headers: this.getHeaders(),
+                            body: JSON.stringify(createPayload),
+                        });
 
-            return { success: true };
+                        // If POST returns 409 (duplicate), study exists, retry with PATCH
+                        if (response.status === 409) {
+                            // Study exists, update it with PATCH
+                            response = await fetch(`${this.config.endpointUrl}/studies?id=eq.${config.id}`, {
+                                method: 'PATCH',
+                                headers: this.getHeaders(),
+                                body: JSON.stringify(payload),
+                            });
+                        }
+                    }
+                } else if (response.status === 404) {
+                    // If PATCH returns 404, try POST to create
+                    const createPayload = {
+                        ...payload,
+                        created_at: config.createdAt || new Date().toISOString(),
+                    };
+                    
+                    response = await fetch(`${this.config.endpointUrl}/studies`, {
+                        method: 'POST',
+                        headers: this.getHeaders(),
+                        body: JSON.stringify(createPayload),
+                    });
+
+                    // If POST returns 409, study exists, retry with PATCH
+                    if (response.status === 409) {
+                        response = await fetch(`${this.config.endpointUrl}/studies?id=eq.${config.id}`, {
+                            method: 'PATCH',
+                            headers: this.getHeaders(),
+                            body: JSON.stringify(payload),
+                        });
+                    }
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                return { success: true };
+            } else {
+                // For other APIs, use standard PUT/POST flow
+                let response = await fetch(`${this.config.endpointUrl}/studies/${config.id}`, {
+                    method: 'PUT',
+                    headers: this.getHeaders(),
+                    body: JSON.stringify(payload),
+                });
+
+                // If PUT returns 404, try POST to create new
+                if (response.status === 404) {
+                    response = await fetch(`${this.config.endpointUrl}/studies`, {
+                        method: 'POST',
+                        headers: this.getHeaders(),
+                        body: JSON.stringify(payload),
+                    });
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                return { success: true };
+            }
         } catch (error) {
             console.error("Failed to save study config to custom API:", error);
             return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
