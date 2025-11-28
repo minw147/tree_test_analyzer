@@ -440,31 +440,62 @@ export class CustomApiAdapter implements StorageAdapter {
         }
 
         try {
-            const response = await fetch(`${this.config.endpointUrl}/studies/${studyId}/results`, {
-                method: 'GET',
-                headers: this.getHeaders(),
-            });
-
-            if (response.status === 404) {
-                return { results: [] }; // No results yet, return empty array
-            }
-
-            if (!response.ok) {
-                const errorText = await response.text().catch(() => 'Unknown error');
-                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-            }
-
-            const results = await response.json();
+            const isSupabase = this.config.endpointUrl.includes('supabase.co');
             
-            // Ensure we return an array
-            if (Array.isArray(results)) {
-                return { results };
-            } else {
-                // Some APIs might return { results: [...] } format
-                if (results.results && Array.isArray(results.results)) {
-                    return { results: results.results };
+            if (isSupabase) {
+                // For Supabase, query the results table directly using study_id filter
+                const response = await fetch(`${this.config.endpointUrl}/results?study_id=eq.${studyId}`, {
+                    method: 'GET',
+                    headers: this.getHeaders(),
+                });
+
+                if (response.status === 404) {
+                    return { results: [] }; // No results yet, return empty array
                 }
-                return { results: null, error: "Invalid response format: expected array of results" };
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                const data = await response.json();
+                
+                // Supabase returns an array of rows, each with result_data JSONB column
+                if (Array.isArray(data)) {
+                    // Extract the result_data from each row
+                    const results = data.map((row: any) => row.result_data).filter((r: any) => r !== null);
+                    return { results };
+                } else {
+                    return { results: null, error: "Invalid response format: expected array of results" };
+                }
+            } else {
+                // For other APIs, use standard endpoint
+                const response = await fetch(`${this.config.endpointUrl}/studies/${studyId}/results`, {
+                    method: 'GET',
+                    headers: this.getHeaders(),
+                });
+
+                if (response.status === 404) {
+                    return { results: [] }; // No results yet, return empty array
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                const results = await response.json();
+                
+                // Ensure we return an array
+                if (Array.isArray(results)) {
+                    return { results };
+                } else {
+                    // Some APIs might return { results: [...] } format
+                    if (results.results && Array.isArray(results.results)) {
+                        return { results: results.results };
+                    }
+                    return { results: null, error: "Invalid response format: expected array of results" };
+                }
             }
         } catch (error) {
             console.error("Failed to fetch results from custom API:", error);
