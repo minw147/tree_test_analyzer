@@ -35,19 +35,34 @@ export class CustomApiAdapter implements StorageAdapter {
         }
 
         try {
+            const isSupabase = this.config.endpointUrl.includes('supabase.co');
+            
+            // For Supabase, wrap the config in the table schema format
+            // For other APIs, send the config directly
+            const payload = isSupabase ? {
+                id: config.id,
+                config: config, // Store entire StudyConfig in JSONB column
+                updated_at: new Date().toISOString(),
+            } : config;
+
             // Try PUT first (update existing), fall back to POST (create new)
             let response = await fetch(`${this.config.endpointUrl}/studies/${config.id}`, {
                 method: 'PUT',
                 headers: this.getHeaders(),
-                body: JSON.stringify(config),
+                body: JSON.stringify(payload),
             });
 
             // If PUT returns 404, try POST to create new
             if (response.status === 404) {
+                const createPayload = isSupabase ? {
+                    ...payload,
+                    created_at: config.createdAt || new Date().toISOString(),
+                } : payload;
+                
                 response = await fetch(`${this.config.endpointUrl}/studies`, {
                     method: 'POST',
                     headers: this.getHeaders(),
-                    body: JSON.stringify(config),
+                    body: JSON.stringify(createPayload),
                 });
             }
 
@@ -92,21 +107,48 @@ export class CustomApiAdapter implements StorageAdapter {
         }
 
         try {
-            const response = await fetch(`${this.config.endpointUrl}/studies/${studyId}/status`, {
-                method: 'GET',
-                headers: this.getHeaders(),
-            });
+            const isSupabase = this.config.endpointUrl.includes('supabase.co');
+            
+            if (isSupabase) {
+                // For Supabase, use the SQL function via RPC endpoint
+                const response = await fetch(`${this.config.endpointUrl}/rpc/get_study_status`, {
+                    method: 'POST',
+                    headers: this.getHeaders(),
+                    body: JSON.stringify({ study_id_param: studyId }),
+                });
 
-            if (response.status === 404) {
-                return { status: 'not-found' };
+                if (response.status === 404) {
+                    return { status: 'not-found' };
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                const data = await response.json();
+                if (data.status === 'not-found') {
+                    return { status: 'not-found' };
+                }
+                return { status: data.status as 'active' | 'closed' };
+            } else {
+                // For other APIs, use the standard /status endpoint
+                const response = await fetch(`${this.config.endpointUrl}/studies/${studyId}/status`, {
+                    method: 'GET',
+                    headers: this.getHeaders(),
+                });
+
+                if (response.status === 404) {
+                    return { status: 'not-found' };
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return { status: data.status };
             }
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return { status: data.status };
         } catch (error) {
             return { status: 'not-found', error: error instanceof Error ? error.message : "Unknown error" };
         }
@@ -118,17 +160,44 @@ export class CustomApiAdapter implements StorageAdapter {
         }
 
         try {
-            const response = await fetch(`${this.config.endpointUrl}/studies/${studyId}/status`, {
-                method: 'PUT',
-                headers: this.getHeaders(),
-                body: JSON.stringify({ status }),
-            });
+            const isSupabase = this.config.endpointUrl.includes('supabase.co');
+            
+            if (isSupabase) {
+                // For Supabase, use the SQL function via RPC endpoint
+                const response = await fetch(`${this.config.endpointUrl}/rpc/update_study_status`, {
+                    method: 'POST',
+                    headers: this.getHeaders(),
+                    body: JSON.stringify({ 
+                        study_id_param: studyId,
+                        new_status: status 
+                    }),
+                });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                const data = await response.json();
+                if (data.success === false) {
+                    return { success: false, error: data.error || "Failed to update status" };
+                }
+
+                return { success: true };
+            } else {
+                // For other APIs, use the standard /status endpoint
+                const response = await fetch(`${this.config.endpointUrl}/studies/${studyId}/status`, {
+                    method: 'PUT',
+                    headers: this.getHeaders(),
+                    body: JSON.stringify({ status }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                return { success: true };
             }
-
-            return { success: true };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
         }
@@ -140,16 +209,27 @@ export class CustomApiAdapter implements StorageAdapter {
         }
 
         try {
+            const isSupabase = this.config.endpointUrl.includes('supabase.co');
+            
             const response = await fetch(`${this.config.endpointUrl}/studies/${studyId}`, {
                 method: 'GET',
                 headers: this.getHeaders(),
             });
 
+            if (response.status === 404) {
+                return { config: null, error: "Study not found" };
+            }
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const config = await response.json();
+            const data = await response.json();
+            
+            // For Supabase, the StudyConfig is stored in the 'config' JSONB column
+            // For other APIs, the response is the StudyConfig directly
+            const config = isSupabase && data.config ? data.config : data;
+            
             return { config };
         } catch (error) {
             return { config: null, error: error instanceof Error ? error.message : "Unknown error" };
@@ -162,24 +242,43 @@ export class CustomApiAdapter implements StorageAdapter {
         }
 
         try {
-            // Try to fetch a generic health endpoint or just check if the base URL is reachable
-            // Since we don't have a standard health check in the spec, we'll try a HEAD request to the base URL
-            // or just assume if we can make a request it's okay. 
-            // Better: Try to fetch the study config for a dummy ID or just check if the server responds.
-            // For now, let's assume if we can reach the endpoint (even if 404), the connection is "working" in terms of network.
-            // But realistically, we should probably have a specific test endpoint.
-            // Let's try to fetch a non-existent study and see if we get a 404 (which means server is up).
+            const isSupabase = this.config.endpointUrl.includes('supabase.co');
+            
+            if (isSupabase) {
+                // For Supabase, test by querying the studies table
+                // Use a dummy query that will return empty or 404, but confirms API is reachable
+                const response = await fetch(`${this.config.endpointUrl}/studies?limit=1`, {
+                    method: 'GET',
+                    headers: this.getHeaders(),
+                });
 
-            await fetch(`${this.config.endpointUrl}/health`, {
-                method: 'GET',
-                headers: this.getHeaders(),
-            });
+                // Accept 200 (OK) or 401 (Unauthorized means API is reachable but auth failed)
+                // 404 means endpoint doesn't exist (table not created)
+                if (response.status === 401) {
+                    // API is reachable but auth failed - this is actually a connection success
+                    // (the auth issue will be caught elsewhere)
+                    return { success: true };
+                } else if (response.status === 200 || response.status === 404) {
+                    return { success: true };
+                } else {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    return { success: false, error: `API returned status ${response.status}: ${errorText}` };
+                }
+            } else {
+                // For other APIs, try /health endpoint
+                const response = await fetch(`${this.config.endpointUrl}/health`, {
+                    method: 'GET',
+                    headers: this.getHeaders(),
+                });
 
-            // We accept 200 (OK) or 404 (Not Found - but server reachable)
-            // Actually, let's just say if it doesn't throw a network error, we are good?
-            // A strict check would be better.
-
-            return { success: true };
+                // Accept 200 (OK) or 404 (Not Found - but server reachable)
+                if (response.status === 200 || response.status === 404) {
+                    return { success: true };
+                } else {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    return { success: false, error: `API returned status ${response.status}: ${errorText}` };
+                }
+            }
         } catch (error) {
             // If fetch fails (network error), then connection failed
             return { success: false, error: error instanceof Error ? error.message : "Connection failed" };
