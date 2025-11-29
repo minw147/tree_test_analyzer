@@ -1,8 +1,24 @@
 {
   "name": "tree-test-analyzer",
-  "private": true,
   "version": "0.0.1",
+  "description": "TreePath - A private, self-hosted tree testing tool for modern UX research",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/minw147/tree_test_analyzer.git"
+  },
+  "keywords": [
+    "tree-testing",
+    "ux-research",
+    "usability-testing",
+    "information-architecture",
+    "ux-tools",
+    "tree-test",
+    "navigation-testing",
+    "open-source"
+  ],
+  "author": "",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
