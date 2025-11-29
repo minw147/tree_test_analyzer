@@ -46,31 +46,31 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
         {
             icon: Shield,
             title: "High Data Privacy",
-            description: "Your data stays private and secure",
+            description: "Private & secure",
             color: "blue"
         },
         {
             icon: Server,
             title: "Self-Hosted Backend",
-            description: "Use your own backend infrastructure",
+            description: "Your infrastructure",
             color: "purple"
         },
         {
             icon: Gift,
             title: "Completely Free",
-            description: "No hidden costs, fully open",
+            description: "No hidden costs",
             color: "blue"
         },
         {
             icon: BarChart3,
             title: "Advanced Data Viz",
-            description: "Powerful analytics and insights",
+            description: "Powerful analytics",
             color: "purple"
         },
         {
             icon: Sparkles,
             title: "AI-Ready Summaries",
-            description: "Formatted summaries for AI analysis",
+            description: "AI-formatted data",
             color: "blue"
         }
     ];
@@ -85,13 +85,13 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
                 <TreeBackgroundVisualization />
             </div>
 
-            <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-12 py-8 sm:py-12 lg:py-16 relative z-10">
+            <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-12 py-4 sm:py-6 lg:py-8 relative z-10">
                 <div className="max-w-4xl w-full mx-auto">
                     {/* Centered Content */}
-                    <div className={`space-y-8 sm:space-y-10 lg:space-y-12 text-center ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'} transition-all duration-700`}>
+                    <div className={`space-y-6 sm:space-y-7 lg:space-y-8 text-center ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'} transition-all duration-700`}>
                         {/* Logo */}
                         <div>
-                            <span className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">
+                            <span className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
                                 <span className="text-purple-600">Tree</span>
                                 <span className="text-blue-600">Path</span>
                             </span>
@@ -99,7 +99,7 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
 
                         {/* Tagline */}
                         <div className="space-y-6">
-                            <p className="text-lg sm:text-xl md:text-2xl text-gray-700 max-w-2xl leading-relaxed mx-auto">
+                            <p className="text-base sm:text-lg md:text-xl text-gray-700 max-w-2xl leading-relaxed mx-auto">
                                 The{' '}
                                 <span className="font-bold text-purple-600">private</span>
                                 ,{' '}
@@ -109,7 +109,7 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
                         </div>
 
                         {/* Features */}
-                        <div className="space-y-4 sm:space-y-5">
+                        <div className="space-y-3 sm:space-y-4">
                             {/* First 3 items */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 max-w-5xl mx-auto">
                                 {features.slice(0, 3).map((feature, index) => {
@@ -117,12 +117,12 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
                                     return (
                                         <div
                                             key={feature.title}
-                                            className={`group flex flex-col items-center text-center p-5 sm:p-6 rounded-2xl bg-white border-2 border-gray-100 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-lg hover:scale-105 transition-[transform,background-color,border-color,box-shadow] duration-50 cursor-pointer ${
+                                            className={`group flex flex-col items-center text-center p-4 sm:p-5 rounded-2xl bg-white/50 backdrop-blur-sm border-2 border-gray-200/60 hover:border-blue-300/80 hover:bg-blue-50/20 hover:shadow-lg hover:scale-105 transition-[transform,background-color,border-color,box-shadow] duration-50 cursor-pointer ${
                                                 isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'
                                             }`}
                                             style={{ transitionDelay: `${300 + index * 100}ms` }}
                                         >
-                                            <div className={`p-3 rounded-xl mb-4 ${
+                                            <div className={`p-3 rounded-xl mb-3 ${
                                                 feature.color === 'blue' 
                                                     ? 'bg-blue-50' 
                                                     : 'bg-purple-50'
@@ -131,8 +131,8 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
                                                     feature.color === 'blue' ? 'text-blue-600' : 'text-purple-600'
                                                 }`} />
                                             </div>
-                                            <h3 className="font-semibold text-base sm:text-lg text-gray-900 mb-2">{feature.title}</h3>
-                                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{feature.description}</p>
+                                            <h3 className="font-semibold text-base sm:text-lg text-gray-900 mb-1">{feature.title}</h3>
+                                            <p className="text-xs sm:text-sm text-gray-500 leading-tight">{feature.description}</p>
                                         </div>
                                     );
                                 })}
@@ -144,12 +144,12 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
                                     return (
                                         <div
                                             key={feature.title}
-                                            className={`group flex flex-col items-center text-center p-5 sm:p-6 rounded-2xl bg-white border-2 border-gray-100 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-lg hover:scale-105 transition-all duration-150 cursor-pointer w-full max-w-sm ${
+                                            className={`group flex flex-col items-center text-center p-4 sm:p-5 rounded-2xl bg-white/50 backdrop-blur-sm border-2 border-gray-200/60 hover:border-blue-300/80 hover:bg-blue-50/20 hover:shadow-lg hover:scale-105 transition-all duration-150 cursor-pointer w-full max-w-sm ${
                                                 isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'
                                             }`}
                                             style={{ transitionDelay: `${300 + (index + 3) * 100}ms` }}
                                         >
-                                            <div className={`p-3 rounded-xl mb-4 ${
+                                            <div className={`p-3 rounded-xl mb-3 ${
                                                 feature.color === 'blue' 
                                                     ? 'bg-blue-50' 
                                                     : 'bg-purple-50'
@@ -158,8 +158,8 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
                                                     feature.color === 'blue' ? 'text-blue-600' : 'text-purple-600'
                                                 }`} />
                                             </div>
-                                            <h3 className="font-semibold text-base sm:text-lg text-gray-900 mb-2">{feature.title}</h3>
-                                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{feature.description}</p>
+                                            <h3 className="font-semibold text-base sm:text-lg text-gray-900 mb-1">{feature.title}</h3>
+                                            <p className="text-xs sm:text-sm text-gray-500 leading-tight">{feature.description}</p>
                                         </div>
                                     );
                                 })}
@@ -167,7 +167,7 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
                         </div>
 
                         {/* CTA Button */}
-                        <div className={`pt-4 sm:pt-6 ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'} transition-all duration-700 delay-700`}>
+                        <div className={`pt-3 sm:pt-4 ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'} transition-all duration-700 delay-700`}>
                             <Button
                                 onClick={handleStart}
                                 size="lg"
