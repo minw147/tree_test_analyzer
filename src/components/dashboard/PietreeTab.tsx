@@ -619,7 +619,7 @@ export function PietreeTab({ data }: PietreeTabProps) {
                         <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1 min-w-0">
                             <div className="w-full md:w-[300px] relative shrink-0">
                                 <select
-                                    className="w-full h-10 pl-3 pr-10 text-sm border rounded-md appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full h-10 pl-3 pr-10 text-sm border rounded-md appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                                     value={selectedTaskId}
                                     onChange={(e) => setSelectedTaskId(e.target.value)}
                                 >

@@ -43,7 +43,7 @@ export function DashboardLayout({ data, onDataChange, onDelete: _onDelete }: Das
                                 />
                             ) : (
                                 <h2
-                                    className="text-lg font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors flex items-center gap-2 group"
+                                    className="text-lg font-semibold text-gray-900 cursor-pointer hover:text-purple-600 transition-colors flex items-center gap-2 group"
                                     onClick={() => setEditingName(true)}
                                     title="Click to edit study name"
                                 >
@@ -72,7 +72,7 @@ export function DashboardLayout({ data, onDataChange, onDelete: _onDelete }: Das
                                     />
                                 ) : (
                                     <p
-                                        className="text-sm text-gray-500 cursor-pointer hover:text-blue-600 transition-colors flex items-center gap-2 group w-fit"
+                                        className="text-sm text-gray-500 cursor-pointer hover:text-purple-600 transition-colors flex items-center gap-2 group w-fit"
                                         onClick={() => setEditingCreator(true)}
                                         title="Click to edit creator name"
                                     >

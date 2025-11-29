@@ -384,9 +384,9 @@ export function Landing() {
                                     },
                                     published: { 
                                         label: 'Published', 
-                                        bg: 'bg-green-100', 
-                                        text: 'text-green-800',
-                                        border: 'bg-green-500'
+                                        bg: 'bg-purple-100', 
+                                        text: 'text-purple-800',
+                                        border: 'bg-purple-500'
                                     },
                                     closed: { 
                                         label: 'Closed', 

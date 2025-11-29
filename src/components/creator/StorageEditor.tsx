@@ -777,13 +777,13 @@ function handleFetchResults(studyId) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Option 1: Hosted Backend */}
                 <Card
-                    className={`cursor-pointer transition-all hover:border-blue-400 ${config.type === 'hosted-backend' ? 'border-blue-500 ring-2 ring-blue-200' : ''}`}
+                    className={`cursor-pointer transition-all hover:border-purple-400 ${config.type === 'hosted-backend' ? 'border-purple-500 ring-2 ring-purple-200' : ''}`}
                     onClick={() => handleTypeChange('hosted-backend')}
                 >
                     <CardHeader>
                         <div className="flex items-center justify-between">
-                            <Server className={`h-8 w-8 ${config.type === 'hosted-backend' ? 'text-blue-500' : 'text-gray-400'}`} />
-                            {config.type === 'hosted-backend' && <CheckCircle2 className="h-5 w-5 text-blue-500" />}
+                            <Server className={`h-8 w-8 ${config.type === 'hosted-backend' ? 'text-purple-600' : 'text-gray-400'}`} />
+                            {config.type === 'hosted-backend' && <CheckCircle2 className="h-5 w-5 text-purple-600" />}
                         </div>
                         <CardTitle className="mt-4">Hosted Backend</CardTitle>
                         <CardDescription>
@@ -791,7 +791,7 @@ function handleFetchResults(studyId) {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded inline-block">
+                        <div className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-1 rounded inline-block">
                             Recommended
                         </div>
                     </CardContent>
@@ -821,13 +821,13 @@ function handleFetchResults(studyId) {
 
                 {/* Option 3: Custom API */}
                 <Card
-                    className={`cursor-pointer transition-all hover:border-blue-400 ${config.type === 'custom-api' ? 'border-blue-500 ring-2 ring-blue-200' : ''}`}
+                    className={`cursor-pointer transition-all hover:border-purple-400 ${config.type === 'custom-api' ? 'border-purple-500 ring-2 ring-purple-200' : ''}`}
                     onClick={() => handleTypeChange('custom-api')}
                 >
                     <CardHeader>
                         <div className="flex items-center justify-between">
-                            <Globe className={`h-8 w-8 ${config.type === 'custom-api' ? 'text-blue-500' : 'text-gray-400'}`} />
-                            {config.type === 'custom-api' && <CheckCircle2 className="h-5 w-5 text-blue-500" />}
+                            <Globe className={`h-8 w-8 ${config.type === 'custom-api' ? 'text-purple-600' : 'text-gray-400'}`} />
+                            {config.type === 'custom-api' && <CheckCircle2 className="h-5 w-5 text-purple-600" />}
                         </div>
                         <div className="mt-4 flex items-center gap-2">
                             <CardTitle>Custom API</CardTitle>
@@ -852,7 +852,7 @@ function handleFetchResults(studyId) {
                                             href="/help#custom-api-tools"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                            className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 font-medium"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setShowCustomApiTooltip(false);
@@ -904,7 +904,7 @@ function handleFetchResults(studyId) {
                 <CardContent className="pt-6">
                     {config.type === 'hosted-backend' && (
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-blue-600">
+                            <div className="flex items-center gap-2 text-purple-600">
                                 <Server className="h-5 w-5" />
                                 <h3 className="font-semibold">Hosted Backend Configuration</h3>
                             </div>
@@ -920,7 +920,7 @@ function handleFetchResults(studyId) {
 
                     {config.type === 'google-sheets' && (
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-blue-600">
+                            <div className="flex items-center gap-2 text-purple-600">
                                 <Sheet className="h-5 w-5" />
                                 <h3 className="font-semibold">Google Sheets Configuration</h3>
                             </div>
@@ -945,10 +945,10 @@ function handleFetchResults(studyId) {
 
                             {(config.googleSheetsMethod === 'apps-script' || !config.googleSheetsMethod) && (
                                 <>
-                                    <Alert className="bg-blue-50 border-blue-200">
-                                        <AlertCircle className="h-4 w-4 text-blue-600" />
-                                        <AlertTitle className="text-blue-800">Apps Script Setup</AlertTitle>
-                                        <AlertDescription className="text-blue-700">
+                                    <Alert className="bg-purple-50 border-purple-200">
+                                        <AlertCircle className="h-4 w-4 text-purple-600" />
+                                        <AlertTitle className="text-purple-800">Apps Script Setup</AlertTitle>
+                                        <AlertDescription className="text-purple-700">
                                             <ol className="list-decimal list-inside space-y-1 mt-2 text-sm">
                                                 <li>Create a Google Sheet for your results</li>
                                                 <li>Get the Apps Script code below and install it in your sheet</li>
@@ -1128,7 +1128,7 @@ function handleFetchResults(studyId) {
 
                     {config.type === 'custom-api' && (
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-blue-600">
+                            <div className="flex items-center gap-2 text-purple-600">
                                 <Globe className="h-5 w-5" />
                                 <h3 className="font-semibold">Custom API Configuration</h3>
                             </div>
@@ -1202,7 +1202,7 @@ function handleFetchResults(studyId) {
                                         id="save-as-default"
                                         checked={saveAsDefault}
                                         onChange={(e) => setSaveAsDefault(e.target.checked)}
-                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                                     />
                                     <Label htmlFor="save-as-default" className="text-sm cursor-pointer">
                                         Save as default for all new studies
