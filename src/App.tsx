@@ -1,7 +1,24 @@
-import { useState, useEffect } from "react";
-import type { UploadedData } from "@/lib/types";
-import { UploadView } from "@/components/dashboard/UploadView";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Landing } from "@/pages/Landing";
+import { Analyzer } from "@/pages/Analyzer";
+import { Creator } from "@/pages/Creator";
+import { Help } from "@/pages/Help";
+import { Settings } from "@/pages/Settings";
+import { ParticipantView } from "@/pages/ParticipantView";
+import { Preview } from "@/pages/Preview";
+import { Layout } from "@/components/layout/Layout";
+import { IntroScreen } from "@/components/intro/IntroScreen";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
 
 const STORAGE_KEY_ANALYZER_DATA = "tree-test-analyzer-data";
 
@@ -28,27 +45,46 @@ const loadDataFromStorage = (): UploadedData | null => {
 };
 
 function App() {
-  const [data, setData] = useState<UploadedData | null>(loadDataFromStorage());
-
-  // Save to localStorage whenever data changes
-  useEffect(() => {
-    if (data) {
-      try {
-        localStorage.setItem(STORAGE_KEY_ANALYZER_DATA, JSON.stringify(data));
-      } catch (error) {
-        console.error("Failed to save analyzer data to localStorage:", error);
-      }
-    } else {
-      // Clear storage when data is reset
-      localStorage.removeItem(STORAGE_KEY_ANALYZER_DATA);
+  const [hasSeenIntro, setHasSeenIntro] = useState(() => {
+    try {
+      return localStorage.getItem('hasSeenIntro') === 'true';
+    } catch {
+      return false;
     }
-  }, [data]);
+  });
 
-  if (!data) {
-    return <UploadView onDataLoaded={setData} />;
-  }
+  const handleIntroComplete = () => {
+    try {
+      localStorage.setItem('hasSeenIntro', 'true');
+      setHasSeenIntro(true);
+    } catch (error) {
+      console.error('Failed to save intro completion:', error);
+      setHasSeenIntro(true);
+    }
+  };
 
-  return <DashboardLayout data={data} onReset={() => setData(null)} />;
+  return (
+    <BrowserRouter>
+      <ScrollToTop />
+      {!hasSeenIntro ? (
+        <IntroScreen onComplete={handleIntroComplete} />
+      ) : (
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Landing />} />
+            <Route path="/analyze" element={<Analyzer />} />
+            <Route path="/analyze/:studyId" element={<Analyzer />} />
+            <Route path="/create" element={<Creator />} />
+            <Route path="/create/:studyId" element={<Creator />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/help" element={<Help />} />
+          </Route>
+          <Route path="/test/:studyId" element={<ParticipantView />} />
+          <Route path="/preview" element={<Preview />} />
+        </Routes>
+      )}
+    </BrowserRouter>
+  );
 }
 
 export default App;

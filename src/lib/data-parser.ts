@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import type { Item, Participant, TaskResult, UploadedData } from "./types";
 
-export async function parseResponseData(file: File): Promise<UploadedData> {
+export async function parseResponseData(file: File): Promise<Omit<UploadedData, "id" | "createdAt" | "updatedAt">> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {

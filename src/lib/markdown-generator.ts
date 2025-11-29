@@ -317,13 +317,13 @@ function generateConfidenceRatings(task: TaskStats): string {
     }
 
     const ratingLabels: Record<number, string> = {
-        7: "Strongly Agree",
-        6: "Moderately Agree",
-        5: "Slightly Agree",
+        7: "Very Confident",
+        6: "Confident",
+        5: "Somewhat Confident",
         4: "Neutral",
-        3: "Slightly Disagree",
-        2: "Moderately Disagree",
-        1: "Strongly Disagree"
+        3: "Somewhat Not Confident",
+        2: "Not Confident",
+        1: "Not Confident At All"
     };
 
     return ratings.map(r => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Item } from "@/lib/types";
 import { ChevronRight, ChevronDown, Folder, File, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,39 +11,52 @@ interface TreePathSelectorProps {
 
 export function TreePathSelector({ tree, selectedPath, onPathSelect }: TreePathSelectorProps) {
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-    const [lastClickedPath, setLastClickedPath] = useState<string | null>(null);
-    const [isCollapsed, setIsCollapsed] = useState(false);
-    const [collapsedPath, setCollapsedPath] = useState<string | null>(null);
+    const [lastClickedPath, setLastClickedPath] = useState<string>("");
+    const [isExpanded, setIsExpanded] = useState<boolean>(!selectedPath);
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    // Reset collapsed state if selectedPath changes externally
-    useEffect(() => {
-        if (collapsedPath !== null && selectedPath !== collapsedPath) {
-            setIsCollapsed(false);
-            setCollapsedPath(null);
-        }
-    }, [selectedPath, collapsedPath]);
+    // Format path for display (remove leading slash, replace slashes with arrows)
+    const formatPathForDisplay = (path: string): string => {
+        if (!path) return "";
+        return path.replace(/^\//, "").replace(/\//g, " / ");
+    };
 
-    // Auto-expand path to selected node when tree is expanded
+    // Expand necessary nodes to show the selected path
     useEffect(() => {
-        if (!isCollapsed && selectedPath) {
-            const pathParts = selectedPath.split('/').filter(p => p);
+        if (selectedPath && isExpanded) {
+            const parts = selectedPath.split("/").filter(Boolean);
             const pathsToExpand = new Set<string>();
-            let currentPath = '';
-            
-            // Build all parent paths that need to be expanded
-            pathParts.forEach(part => {
+            let currentPath = "";
+            parts.forEach((part) => {
                 currentPath = currentPath ? `${currentPath}/${part}` : `/${part}`;
                 pathsToExpand.add(currentPath);
             });
-            
-            // Expand all parent nodes
-            setExpandedNodes(prev => {
-                const newExpanded = new Set(prev);
-                pathsToExpand.forEach(path => newExpanded.add(path));
-                return newExpanded;
-            });
+            setExpandedNodes(pathsToExpand);
         }
-    }, [isCollapsed, selectedPath]);
+    }, [selectedPath, isExpanded]);
+
+    // Handle click outside to collapse
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                if (isExpanded) {
+                    // If we have a selected path, collapse to show it
+                    // If we don't have a selected path but have a last clicked, keep it expanded
+                    if (selectedPath) {
+                        setIsExpanded(false);
+                        setLastClickedPath("");
+                    }
+                }
+            }
+        };
+
+        if (isExpanded) {
+            document.addEventListener("mousedown", handleClickOutside);
+            return () => {
+                document.removeEventListener("mousedown", handleClickOutside);
+            };
+        }
+    }, [isExpanded, selectedPath]);
 
     const toggleNode = (path: string) => {
         const newExpanded = new Set(expandedNodes);
@@ -59,30 +72,18 @@ export function TreePathSelector({ tree, selectedPath, onPathSelect }: TreePathS
         return parentPath ? `${parentPath}/${nodeName}` : `/${nodeName}`;
     };
 
-    const handleNodeClick = (path: string, hasChildren: boolean) => {
+    const handleNodeClick = (path: string) => {
         setLastClickedPath(path);
-        if (hasChildren) {
-            toggleNode(path);
+        // Expand the tree when clicking
+        if (!isExpanded) {
+            setIsExpanded(true);
         }
-        onPathSelect(path);
     };
 
     const handleConfirmPath = (path: string) => {
         onPathSelect(path);
-        setLastClickedPath(null);
-        setIsCollapsed(true);
-        setCollapsedPath(path);
-    };
-
-    const handleExpandPath = () => {
-        setIsCollapsed(false);
-        setLastClickedPath(null);
-        setCollapsedPath(null);
-    };
-
-    // Format path for display (remove leading slash, replace slashes with spaces and forward slashes)
-    const formatPathForDisplay = (path: string): string => {
-        return path.startsWith('/') ? path.substring(1).replace(/\//g, ' / ') : path.replace(/\//g, ' / ');
+        setLastClickedPath("");
+        setIsExpanded(false);
     };
 
     const renderNode = (node: Item, parentPath: string = "", level: number = 0): React.ReactElement => {
@@ -102,7 +103,13 @@ export function TreePathSelector({ tree, selectedPath, onPathSelect }: TreePathS
                         : "hover:bg-gray-100 cursor-pointer"
                         }`}
                     style={{ paddingLeft: `${level * 20 + 8}px` }}
-                    onClick={() => !isLastClicked && handleNodeClick(currentPath, hasChildren)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (hasChildren) {
+                            toggleNode(currentPath);
+                        }
+                        handleNodeClick(currentPath);
+                    }}
                 >
                     {hasChildren ? (
                         <>
@@ -119,13 +126,14 @@ export function TreePathSelector({ tree, selectedPath, onPathSelect }: TreePathS
                             <File className="h-4 w-4 text-gray-400 flex-shrink-0" />
                         </>
                     )}
-                    <span className="text-sm flex-1">{node.name}</span>
+                    <span className={`text-sm ${isLastClicked ? "flex-1 text-gray-700" : "flex-1"}`}>
+                        {node.name}
+                    </span>
                     {isSelected && <Check className="h-4 w-4 text-blue-600 flex-shrink-0" />}
-                    {isLastClicked && (
+                    {isLastClicked && !isSelected && (
                         <Button
                             size="sm"
-                            variant="default"
-                            className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white ml-2"
+                            className="h-7 px-3 text-xs bg-cyan-500 hover:bg-cyan-600 text-white flex-shrink-0"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleConfirmPath(currentPath);
@@ -153,22 +161,27 @@ export function TreePathSelector({ tree, selectedPath, onPathSelect }: TreePathS
         );
     }
 
-    // Show collapsed view when a path is confirmed
-    if (isCollapsed && selectedPath) {
+    // Collapsed view - show path as text (only if we have a selected path and not expanded)
+    if (!isExpanded && selectedPath) {
         return (
-            <div className="border rounded-lg p-2 bg-white">
-                <div
-                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-green-50 border border-green-200 cursor-pointer hover:bg-green-100 transition-colors w-full"
-                    onClick={handleExpandPath}
-                >
-                    <span className="text-sm text-gray-800 font-medium">{formatPathForDisplay(selectedPath)}</span>
+            <div
+                ref={containerRef}
+                className="border rounded-lg p-2 bg-green-50 border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
+                onClick={() => {
+                    setIsExpanded(true);
+                    setLastClickedPath(selectedPath);
+                }}
+            >
+                <div className="text-sm font-medium text-gray-700">
+                    {formatPathForDisplay(selectedPath)}
                 </div>
             </div>
         );
     }
 
+    // Expanded view - show interactive tree (when expanded or when no path selected yet)
     return (
-        <div className="border rounded-lg p-2 max-h-64 overflow-y-auto bg-white">
+        <div ref={containerRef} className="border rounded-lg p-2 max-h-64 overflow-y-auto bg-white">
             {tree.map((node) => renderNode(node))}
         </div>
     );

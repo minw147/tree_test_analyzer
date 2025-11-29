@@ -2,28 +2,31 @@ import { useState, useMemo, useEffect } from "react";
 import { Upload, FileText, AlertCircle, Plus, Trash2, ListPlus } from "lucide-react";
 import { parseResponseData, parseTreeFromString } from "@/lib/data-parser";
 import type { UploadedData, Item } from "@/lib/types";
+import type { StudyConfig } from "@/lib/types/study";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TreePathSelector } from "@/components/ui/tree-path-selector";
+import { validateStudyConfig, treeNodesToText } from "@/lib/study-exporter";
 
 interface UploadViewProps {
-    onDataLoaded: (data: UploadedData) => void;
+    onDataLoaded: (data: Omit<UploadedData, "id" | "createdAt" | "updatedAt">) => void;
 }
 
-const STORAGE_KEY_FORM_DATA = "tree-test-analyzer-form-data";
+const STORAGE_KEY_UPLOAD_FORM = "tree-test-upload-form";
 
-interface FormData {
+interface SavedFormData {
     treeText: string;
     taskInstructions: string[];
     expectedPaths: string[][];
 }
 
-const loadFormDataFromStorage = (): FormData | null => {
+// Load form data from localStorage
+const loadFormFromStorage = (): SavedFormData | null => {
     try {
-        const saved = localStorage.getItem(STORAGE_KEY_FORM_DATA);
+        const saved = localStorage.getItem(STORAGE_KEY_UPLOAD_FORM);
         if (saved) {
             return JSON.parse(saved);
         }
@@ -33,24 +36,35 @@ const loadFormDataFromStorage = (): FormData | null => {
     return null;
 };
 
-const saveFormDataToStorage = (formData: FormData) => {
-    try {
-        localStorage.setItem(STORAGE_KEY_FORM_DATA, JSON.stringify(formData));
-    } catch (error) {
-        console.error("Failed to save form data to localStorage:", error);
-    }
-};
-
 export function UploadView({ onDataLoaded }: UploadViewProps) {
+    const savedForm = loadFormFromStorage();
+
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    
-    // Load initial state from localStorage
-    const savedFormData = loadFormDataFromStorage();
-    const [treeText, setTreeText] = useState(savedFormData?.treeText || "");
-    const [taskInstructions, setTaskInstructions] = useState(savedFormData?.taskInstructions || ["", "", ""]);
-    const [expectedPaths, setExpectedPaths] = useState(savedFormData?.expectedPaths || [[""], [""], [""]]);
+    const [treeText, setTreeText] = useState(savedForm?.treeText || "");
+    const [taskInstructions, setTaskInstructions] = useState<string[]>(
+        savedForm?.taskInstructions || ["", "", ""]
+    );
+    const [expectedPaths, setExpectedPaths] = useState<string[][]>(
+        savedForm?.expectedPaths || [[""], [""], [""]]
+    );
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+    const [configFile, setConfigFile] = useState<File | null>(null);
+    const [configLoaded, setConfigLoaded] = useState(false);
+
+    // Save form data to localStorage whenever it changes
+    useEffect(() => {
+        try {
+            const formData: SavedFormData = {
+                treeText,
+                taskInstructions,
+                expectedPaths,
+            };
+            localStorage.setItem(STORAGE_KEY_UPLOAD_FORM, JSON.stringify(formData));
+        } catch (error) {
+            console.error("Failed to save form data to localStorage:", error);
+        }
+    }, [treeText, taskInstructions, expectedPaths]);
 
     // Save form data to localStorage whenever it changes
     useEffect(() => {
@@ -76,6 +90,54 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
         if (file) {
             setUploadedFile(file);
             setError(null);
+        }
+    };
+
+    const handleConfigFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setError(null);
+        setConfigFile(file);
+
+        try {
+            const text = await file.text();
+            const config: StudyConfig = JSON.parse(text);
+
+            // Validate the config
+            const validation = validateStudyConfig(config);
+            if (!validation.valid) {
+                setError(validation.error || "Invalid study configuration file");
+                setConfigFile(null);
+                return;
+            }
+
+            // Convert tree to text format
+            const treeTextValue = treeNodesToText(config.tree);
+            setTreeText(treeTextValue);
+
+            // Extract task instructions and expected paths
+            const taskInstructionsValue = config.tasks.map(task => task.description);
+            const expectedPathsValue = config.tasks.map(task => 
+                task.correctPath && task.correctPath.length > 0 
+                    ? task.correctPath 
+                    : [""]
+            );
+
+            // Ensure we have at least one task
+            if (taskInstructionsValue.length === 0) {
+                taskInstructionsValue.push("");
+                expectedPathsValue.push([""]);
+            }
+
+            setTaskInstructions(taskInstructionsValue);
+            setExpectedPaths(expectedPathsValue);
+            setConfigLoaded(true);
+        } catch (err) {
+            console.error("Failed to parse config file:", err);
+            setError(err instanceof Error ? err.message : "Failed to parse configuration file");
+            setConfigFile(null);
+            setConfigLoaded(false);
         }
     };
 
@@ -136,6 +198,9 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
                     task.expectedAnswer = expectedPaths[index].filter(p => p.trim()).join(", ");
                 }
             });
+
+            // Clear form storage after successful load
+            localStorage.removeItem(STORAGE_KEY_UPLOAD_FORM);
 
             onDataLoaded(data);
         } catch (err) {
@@ -247,7 +312,7 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <div className="flex h-full items-center justify-center p-4">
             <Card className="w-full max-w-xl relative">
                 <div className="absolute top-4 right-4">
                     <Button
@@ -268,6 +333,36 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                    {/* JSON Config Upload Section */}
+                    <div className="space-y-2 border-b pb-4">
+                        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Study Configuration (Optional)
+                        </label>
+                        <p className="text-xs text-gray-500 mb-2">
+                            Upload a study configuration JSON file exported from Creator to automatically fill in tree structure and tasks.
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="file"
+                                accept=".json"
+                                onChange={handleConfigFileUpload}
+                                className="text-sm"
+                                disabled={isProcessing}
+                            />
+                            {configLoaded && (
+                                <span className="text-xs text-green-600 flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Config loaded
+                                </span>
+                            )}
+                        </div>
+                        {configFile && (
+                            <p className="text-xs text-gray-500">
+                                {configFile.name}
+                            </p>
+                        )}
+                    </div>
+
                     <div className="space-y-2">
                         <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Tree Structure <span className="text-red-500">*</span>
@@ -322,13 +417,13 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
                                         <p className="text-sm font-medium text-gray-900">
                                             Click to upload or drag and drop
                                         </p>
-                                        <p className="text-xs text-gray-500">Excel files (.xlsx, .xls)</p>
+                                        <p className="text-xs text-gray-500">Excel or CSV files (.xlsx, .xls, .csv)</p>
                                     </div>
                                 </>
                             )}
                             <input
                                 type="file"
-                                accept=".xlsx,.xls"
+                                accept=".xlsx,.xls,.csv"
                                 className="absolute inset-0 cursor-pointer opacity-0"
                                 onChange={handleFileUpload}
                                 disabled={isProcessing}
