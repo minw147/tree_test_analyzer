@@ -66,16 +66,6 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
         }
     }, [treeText, taskInstructions, expectedPaths]);
 
-    // Save form data to localStorage whenever it changes
-    useEffect(() => {
-        const formData: FormData = {
-            treeText,
-            taskInstructions,
-            expectedPaths
-        };
-        saveFormDataToStorage(formData);
-    }, [treeText, taskInstructions, expectedPaths]);
-
     const parsedTree = useMemo<Item[]>(() => {
         if (!treeText.trim()) return [];
         try {
