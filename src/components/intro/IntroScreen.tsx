@@ -57,8 +57,8 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
         },
         {
             icon: Gift,
-            title: "Completely Free",
-            description: "No hidden costs",
+            title: "Open Source",
+            description: "Free and open-source",
             color: "blue"
         },
         {

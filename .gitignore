@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Internal documentation (not for public repo)
+DEPLOYMENT_PLAN.md
+task_fromantigravity.md
