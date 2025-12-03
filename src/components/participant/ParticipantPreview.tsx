@@ -469,17 +469,25 @@ export function ParticipantPreview({
 
                     {phase === "completed" && (
                         <div className="space-y-6">
-                            {isSubmitting && (
+                            {isSubmitting ? (
                                 <div className="flex items-center justify-center gap-2 text-blue-600 mb-4">
                                     <Loader2 className="h-5 w-5 animate-spin" />
                                     <p className="text-sm">Submitting your results...</p>
                                 </div>
+                            ) : (
+                                <div className="prose prose-lg max-w-none text-gray-700">
+                                    <ReactMarkdown 
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            a: ({node, ...props}) => (
+                                                <a {...props} target="_blank" rel="noopener noreferrer" />
+                                            ),
+                                        }}
+                                    >
+                                        {study.settings.completedMessage}
+                                    </ReactMarkdown>
+                                </div>
                             )}
-                            <div className="prose prose-lg max-w-none text-gray-700">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                    {study.settings.completedMessage}
-                                </ReactMarkdown>
-                            </div>
                         </div>
                     )}
                 </div>
