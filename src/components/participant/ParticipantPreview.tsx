@@ -343,7 +343,14 @@ export function ParticipantPreview({
                     {phase === "welcome" && (
                         <div className="space-y-6">
                             <div className="prose prose-lg max-w-none text-gray-700">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                <ReactMarkdown 
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        a: ({node, ...props}) => (
+                                            <a {...props} target="_blank" rel="noopener noreferrer" />
+                                        ),
+                                    }}
+                                >
                                     {study.settings.welcomeMessage}
                                 </ReactMarkdown>
                             </div>
@@ -358,7 +365,14 @@ export function ParticipantPreview({
                     {phase === "instructions" && (
                         <div className="space-y-6">
                             <div className="prose prose-lg max-w-none text-gray-700">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                <ReactMarkdown 
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        a: ({node, ...props}) => (
+                                            <a {...props} target="_blank" rel="noopener noreferrer" />
+                                        ),
+                                    }}
+                                >
                                     {study.settings.instructions}
                                 </ReactMarkdown>
                             </div>
