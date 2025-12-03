@@ -20,7 +20,10 @@ function ScrollToTop() {
   return null;
 }
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  const isParticipantRoute = location.pathname.startsWith('/test/') || location.pathname === '/preview';
+  
   const [hasSeenIntro, setHasSeenIntro] = useState(() => {
     try {
       return localStorage.getItem('hasSeenIntro') === 'true';
@@ -39,26 +42,37 @@ function App() {
     }
   };
 
+  // Skip intro screen for participant routes
+  const shouldShowIntro = !hasSeenIntro && !isParticipantRoute;
+
   return (
-    <BrowserRouter>
+    <>
       <ScrollToTop />
-      {!hasSeenIntro ? (
+      {shouldShowIntro ? (
         <IntroScreen onComplete={handleIntroComplete} />
       ) : (
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Landing />} />
-          <Route path="/analyze" element={<Analyzer />} />
-          <Route path="/analyze/:studyId" element={<Analyzer />} />
-          <Route path="/create" element={<Creator />} />
-          <Route path="/create/:studyId" element={<Creator />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/help" element={<Help />} />
-        </Route>
-        <Route path="/test/:studyId" element={<ParticipantView />} />
-        <Route path="/preview" element={<Preview />} />
-      </Routes>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Landing />} />
+            <Route path="/analyze" element={<Analyzer />} />
+            <Route path="/analyze/:studyId" element={<Analyzer />} />
+            <Route path="/create" element={<Creator />} />
+            <Route path="/create/:studyId" element={<Creator />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/help" element={<Help />} />
+          </Route>
+          <Route path="/test/:studyId" element={<ParticipantView />} />
+          <Route path="/preview" element={<Preview />} />
+        </Routes>
       )}
+    </>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
     </BrowserRouter>
   );
 }
