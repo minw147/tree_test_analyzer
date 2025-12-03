@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { ChevronRight, ChevronDown, Folder, File, Home, Check, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { StudyConfig, TreeNode } from "@/lib/types/study";
 import type { Item } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -340,20 +342,10 @@ export function ParticipantPreview({
                 <div className="bg-white rounded-lg shadow-sm p-8">
                     {phase === "welcome" && (
                         <div className="space-y-6">
-                            <div className="prose max-w-none whitespace-pre-wrap text-gray-700">
-                                {study.settings.welcomeMessage.split('\n').map((line, i) => {
-                                    if (line.startsWith('# ')) {
-                                        return <h1 key={i} className="text-3xl font-bold mb-4">{line.substring(2)}</h1>;
-                                    } else if (line.startsWith('## ')) {
-                                        return <h2 key={i} className="text-2xl font-semibold mb-3">{line.substring(3)}</h2>;
-                                    } else if (line.startsWith('### ')) {
-                                        return <h3 key={i} className="text-xl font-medium mb-2">{line.substring(4)}</h3>;
-                                    } else if (line.trim() === '') {
-                                        return <br key={i} />;
-                                    } else {
-                                        return <p key={i} className="mb-2">{line}</p>;
-                                    }
-                                })}
+                            <div className="prose prose-lg max-w-none text-gray-700">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {study.settings.welcomeMessage}
+                                </ReactMarkdown>
                             </div>
                             <div className="flex justify-end">
                                 <Button onClick={handleNext} size="lg">
@@ -365,20 +357,10 @@ export function ParticipantPreview({
 
                     {phase === "instructions" && (
                         <div className="space-y-6">
-                            <div className="prose max-w-none whitespace-pre-wrap text-gray-700">
-                                {study.settings.instructions.split('\n').map((line, i) => {
-                                    if (line.startsWith('# ')) {
-                                        return <h1 key={i} className="text-3xl font-bold mb-4">{line.substring(2)}</h1>;
-                                    } else if (line.startsWith('## ')) {
-                                        return <h2 key={i} className="text-2xl font-semibold mb-3">{line.substring(3)}</h2>;
-                                    } else if (line.startsWith('### ')) {
-                                        return <h3 key={i} className="text-xl font-medium mb-2">{line.substring(4)}</h3>;
-                                    } else if (line.trim() === '') {
-                                        return <br key={i} />;
-                                    } else {
-                                        return <p key={i} className="mb-2">{line}</p>;
-                                    }
-                                })}
+                            <div className="prose prose-lg max-w-none text-gray-700">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {study.settings.instructions}
+                                </ReactMarkdown>
                             </div>
                             <div className="flex justify-end">
                                 <Button onClick={handleStartTest} size="lg">
@@ -493,20 +475,10 @@ export function ParticipantPreview({
                                     <p className="text-sm">Submitting your results...</p>
                                 </div>
                             )}
-                            <div className="prose max-w-none whitespace-pre-wrap text-gray-700">
-                                {study.settings.completedMessage.split('\n').map((line, i) => {
-                                    if (line.startsWith('# ')) {
-                                        return <h1 key={i} className="text-3xl font-bold mb-4">{line.substring(2)}</h1>;
-                                    } else if (line.startsWith('## ')) {
-                                        return <h2 key={i} className="text-2xl font-semibold mb-3">{line.substring(3)}</h2>;
-                                    } else if (line.startsWith('### ')) {
-                                        return <h3 key={i} className="text-xl font-medium mb-2">{line.substring(4)}</h3>;
-                                    } else if (line.trim() === '') {
-                                        return <br key={i} />;
-                                    } else {
-                                        return <p key={i} className="mb-2">{line}</p>;
-                                    }
-                                })}
+                            <div className="prose prose-lg max-w-none text-gray-700">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {study.settings.completedMessage}
+                                </ReactMarkdown>
                             </div>
                         </div>
                     )}
