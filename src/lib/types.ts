@@ -95,6 +95,26 @@ export interface TaskStats {
                 indirectSkipPercentage: number;
             };
         }[];
+        parentNodeStats?: {
+            level1: {
+                rate: number;
+                count: number;
+                total: number;
+                nodeName: string;
+            };
+            level2: {
+                rate: number;
+                count: number;
+                total: number;
+                nodeName: string;
+            } | null;
+            level3: {
+                rate: number;
+                count: number;
+                total: number;
+                nodeName: string;
+            } | null;
+        };
     };
 }
 

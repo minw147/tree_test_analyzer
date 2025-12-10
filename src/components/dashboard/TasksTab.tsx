@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart } from "@/components/ui/pie-chart";
 import { BoxPlot } from "@/components/ui/box-plot";
 import { HelpCircle, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { ParentNodeSuccessSection } from "./ParentNodeSuccessSection";
 
 interface TasksTabProps {
     data: UploadedData;
@@ -126,6 +127,13 @@ export function TasksTab({ data }: TasksTabProps) {
                         </div>
                     </CardHeader>
                     <CardContent className="pt-6">
+                        {/* Parent Node Success Section */}
+                        {selectedTask && (
+                            <div className="mb-6">
+                                <ParentNodeSuccessSection task={selectedTask} />
+                            </div>
+                        )}
+
                         <div className="mb-6">
                             <h3 className="text-sm font-semibold text-gray-900">Task results</h3>
                             <p className="text-sm text-gray-500">Success and failure metrics from this task.</p>

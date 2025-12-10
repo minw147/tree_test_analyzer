@@ -7,6 +7,7 @@ import { Help } from "@/pages/Help";
 import { Settings } from "@/pages/Settings";
 import { ParticipantView } from "@/pages/ParticipantView";
 import { Preview } from "@/pages/Preview";
+import { SharedAnalyzer } from "@/pages/SharedAnalyzer";
 import { Layout } from "@/components/layout/Layout";
 import { IntroScreen } from "@/components/intro/IntroScreen";
 
@@ -23,6 +24,7 @@ function ScrollToTop() {
 function AppContent() {
   const location = useLocation();
   const isParticipantRoute = location.pathname.startsWith('/test/') || location.pathname === '/preview';
+  const isShareRoute = location.pathname.startsWith('/share/');
   
   const [hasSeenIntro, setHasSeenIntro] = useState(() => {
     try {
@@ -42,8 +44,8 @@ function AppContent() {
     }
   };
 
-  // Skip intro screen for participant routes
-  const shouldShowIntro = !hasSeenIntro && !isParticipantRoute;
+  // Skip intro screen for participant routes and share routes
+  const shouldShowIntro = !hasSeenIntro && !isParticipantRoute && !isShareRoute;
 
   return (
     <>
@@ -63,6 +65,7 @@ function AppContent() {
           </Route>
           <Route path="/test/:studyId" element={<ParticipantView />} />
           <Route path="/preview" element={<Preview />} />
+          <Route path="/share/:shareId" element={<SharedAnalyzer />} />
         </Routes>
       )}
     </>

@@ -1,4 +1,5 @@
 import type { Item, ParentClickStats, TaskStats, TreeTestOverviewStats, UploadedData } from "./types";
+import { calculateParentNodeStats } from "./stats/parent-node-stats";
 
 function computeStatistics(values: number[]): { median: number; min: number; max: number; q1: number; q3: number } {
     if (values.length === 0) {
@@ -84,6 +85,15 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         const expectedAnswers = task.expectedAnswer.split(",").map(a => a.trim());
         const normalizedExpectedAnswers = expectedAnswers.map(a => a.toLowerCase());
 
+        // Calculate parent node stats (safe - wrapped in try-catch)
+        let parentNodeStats;
+        try {
+            parentNodeStats = calculateParentNodeStats(task, data.participants);
+        } catch (error) {
+            console.error('Error calculating parent node stats for task:', task.index, error);
+            parentNodeStats = null;
+        }
+
         if (rawTaskResults.length === 0) {
             return {
                 ...task,
@@ -102,6 +112,11 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
                     incorrectDestinations: [],
                     confidenceRatings: [],
                     pathDistribution: [],
+                    parentNodeStats: parentNodeStats ? {
+                        level1: parentNodeStats.level1,
+                        level2: parentNodeStats.level2,
+                        level3: parentNodeStats.level3
+                    } : undefined,
                 }
             };
         }
@@ -327,6 +342,11 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
                 incorrectDestinations,
                 confidenceRatings,
                 pathDistribution,
+                parentNodeStats: parentNodeStats ? {
+                    level1: parentNodeStats.level1,
+                    level2: parentNodeStats.level2,
+                    level3: parentNodeStats.level3
+                } : undefined,
             }
         };
     });
