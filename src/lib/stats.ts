@@ -88,6 +88,11 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
             .map(a => a.trim())
             .filter(a => a.length > 0);
 
+        // Normalize expected answers (used for incorrect destination checks)
+        const normalizedExpectedPaths = expectedAnswers
+            .map(path => normalizePath(path).toLowerCase())
+            .filter(p => p.length > 0);
+
         // Calculate parent node stats (safe - wrapped in try-catch)
         let parentNodeStats;
         try {
@@ -132,97 +137,31 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         // Use original task results without modifying success status
         const taskResults = rawTaskResults;
 
-        // Normalize expected answers and extract final destinations (keep arrays aligned)
-        const normalizedExpectedPaths: string[] = [];
-        const expectedFinalDestinations: string[] = [];
-        expectedAnswers.forEach(path => {
-            const normalized = normalizePath(path).toLowerCase();
-            const parsed = parsePath(path);
-            const finalNode = parsed.length > 0 ? parsed[parsed.length - 1].toLowerCase() : null;
-
-            if (normalized && finalNode) {
-                normalizedExpectedPaths.push(normalized);
-                expectedFinalDestinations.push(finalNode);
-            }
-        });
-
-        // If no valid expected paths, leave path distribution empty
-        if (normalizedExpectedPaths.length === 0 || expectedFinalDestinations.length === 0) {
-            return {
-                ...task,
-                maxTimeSeconds: null,
-                parsedTree: JSON.stringify(tree),
-                stats: {
-                    success: { rate: 0, margin: 0 },
-                    directness: { rate: 0, margin: 0 },
-                    time: { median: 0, min: 0, max: 0, q1: 0, q3: 0 },
-                    score: 0,
-                    breakdown: {
-                        directSuccess: 0, indirectSuccess: 0, directFail: 0, indirectFail: 0,
-                        directSkip: 0, indirectSkip: 0, total: 0
-                    },
-                    parentClicks: [],
-                    incorrectDestinations: [],
-                    confidenceRatings: [],
-                    pathDistribution: [],
-                    parentNodeStats: parentNodeStats ? {
-                        level1: parentNodeStats.level1,
-                        level2: parentNodeStats.level2,
-                        level3: parentNodeStats.level3
-                    } : undefined,
-                }
-            };
-        }
-
         // Count paths for path distribution
-        // Count ANY participant who reached an expected destination (determines success independently)
+        // Count any successful (direct or indirect) participant who reached a destination
         taskResults.forEach(r => {
-            if (r.skipped) return; // Skip skipped participants
-            
-            // Normalize participant path to same format as expected paths
-            const normalizedParticipantPath = normalizePath(r.pathTaken).toLowerCase();
-            
-            // Find which expected destination this participant reached
-            let matchedFinalDestination: string | null = null;
-            
-            // First try exact match (for direct paths)
-            const exactMatchIndex = normalizedExpectedPaths.indexOf(normalizedParticipantPath);
-            if (exactMatchIndex !== -1) {
-                matchedFinalDestination = expectedFinalDestinations[exactMatchIndex];
+            if (r.skipped || !r.successful) return; // Only successful, non-skipped
+
+            // Parse path and get final destination node
+            const parsedPath = parsePath(r.pathTaken);
+            if (parsedPath.length === 0) return;
+            const finalDestination = parsedPath[parsedPath.length - 1].toLowerCase();
+
+            const pathLength = parsedPath.length;
+
+            if (pathDistributionMap.has(finalDestination)) {
+                const existing = pathDistributionMap.get(finalDestination)!;
+                existing.count += 1;
+                // Update shortest path if this path is shorter
+                const existingLength = parsePath(existing.shortestPath).length;
+                if (pathLength < existingLength) {
+                    existing.shortestPath = r.pathTaken;
+                }
             } else {
-                // For indirect paths (with backtracking), find which expected destination they reached
-                // Check if the path ends with any of the expected paths
-                for (let i = 0; i < normalizedExpectedPaths.length; i++) {
-                    const normalizedExpected = normalizedExpectedPaths[i];
-                    
-                    // Check if the participant's path ends with the expected destination
-                    if (normalizedParticipantPath.endsWith(normalizedExpected)) {
-                        matchedFinalDestination = expectedFinalDestinations[i];
-                        break; // Count once per participant
-                    }
-                }
-            }
-            
-            // If participant reached an expected destination, count it
-            if (matchedFinalDestination) {
-                const normalizedPath = normalizePath(r.pathTaken);
-                const pathLength = normalizedPath.split('|').filter(Boolean).length;
-                
-                if (pathDistributionMap.has(matchedFinalDestination)) {
-                    const existing = pathDistributionMap.get(matchedFinalDestination)!;
-                    existing.count += 1;
-                    // Update shortest path if this path is shorter
-                    const existingNormalized = normalizePath(existing.shortestPath);
-                    const existingLength = existingNormalized.split('|').filter(Boolean).length;
-                    if (pathLength < existingLength) {
-                        existing.shortestPath = r.pathTaken;
-                    }
-                } else {
-                    pathDistributionMap.set(matchedFinalDestination, {
-                        count: 1,
-                        shortestPath: r.pathTaken
-                    });
-                }
+                pathDistributionMap.set(finalDestination, {
+                    count: 1,
+                    shortestPath: r.pathTaken
+                });
             }
         });
 
