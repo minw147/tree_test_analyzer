@@ -1,5 +1,6 @@
 import type { Item, ParentClickStats, TaskStats, TreeTestOverviewStats, UploadedData } from "./types";
 import { calculateParentNodeStats } from "./stats/parent-node-stats";
+import { normalizePath, parsePath } from "./stats/path-utils";
 
 function computeStatistics(values: number[]): { median: number; min: number; max: number; q1: number; q3: number } {
     if (values.length === 0) {
@@ -83,7 +84,6 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
 
         // Determine expected paths first
         const expectedAnswers = task.expectedAnswer.split(",").map(a => a.trim());
-        const normalizedExpectedAnswers = expectedAnswers.map(a => a.toLowerCase());
 
         // Calculate parent node stats (safe - wrapped in try-catch)
         let parentNodeStats;
@@ -128,29 +128,31 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         // Use original task results without modifying success status
         const taskResults = rawTaskResults;
 
+        // Normalize expected answers to consistent format for comparison
+        const normalizedExpectedPaths = expectedAnswers.map(path => normalizePath(path).toLowerCase());
+
         // Count paths for path distribution
-        // For successful participants, determine which expected path they took
+        // Count ANY participant who reached an expected destination (determines success independently)
         taskResults.forEach(r => {
-            if (!r.successful) return; // Only count successful participants
+            if (r.skipped) return; // Skip skipped participants
             
-            const normalizedPath = r.pathTaken.toLowerCase();
+            // Normalize participant path to same format as expected paths
+            const normalizedParticipantPath = normalizePath(r.pathTaken).toLowerCase();
             
             // First try exact match (for direct paths)
-            if (normalizedExpectedAnswers.includes(normalizedPath)) {
-                const matchedIndex = normalizedExpectedAnswers.indexOf(normalizedPath);
-                if (matchedIndex !== -1) {
-                    const originalPath = expectedAnswers[matchedIndex];
-                    pathCounts.set(originalPath, (pathCounts.get(originalPath) || 0) + 1);
-                }
+            const exactMatchIndex = normalizedExpectedPaths.indexOf(normalizedParticipantPath);
+            if (exactMatchIndex !== -1) {
+                const originalPath = expectedAnswers[exactMatchIndex];
+                pathCounts.set(originalPath, (pathCounts.get(originalPath) || 0) + 1);
             } else {
                 // For indirect paths (with backtracking), find which expected destination they reached
                 // Check if the path ends with any of the expected paths
                 for (let i = 0; i < expectedAnswers.length; i++) {
                     const expectedPath = expectedAnswers[i];
-                    const normalizedExpected = normalizedExpectedAnswers[i];
+                    const normalizedExpected = normalizedExpectedPaths[i];
                     
                     // Check if the participant's path ends with the expected destination
-                    if (normalizedPath.endsWith(normalizedExpected)) {
+                    if (normalizedParticipantPath.endsWith(normalizedExpected)) {
                         pathCounts.set(expectedPath, (pathCounts.get(expectedPath) || 0) + 1);
                         break; // Count once per participant
                     }
@@ -187,11 +189,13 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         const score = Math.round(successRate * 0.7 + directnessRate * 0.3);
 
         // Path Distribution Stats
+        // Calculate total of all paths that matched (may differ from successCount if successful flag was set differently)
+        const totalMatchedPaths = Array.from(pathCounts.values()).reduce((sum, count) => sum + count, 0);
         const pathDistribution = Array.from(pathCounts.entries())
             .map(([path, count]) => ({
                 path,
                 count,
-                percentage: successCount > 0 ? Math.round((count / successCount) * 100) : 0
+                percentage: totalMatchedPaths > 0 ? Math.round((count / totalMatchedPaths) * 100) : 0
             }))
             .sort((a, b) => b.count - a.count);
 
@@ -286,18 +290,67 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         });
 
         // Incorrect Destinations
-        const incorrectResults = taskResults.filter(r => !r.successful && !r.skipped);
-        const incorrectDestinationsMap = new Map<string, number>();
+        // Determine incorrectness based on path matching, not the stored successful flag
+        const incorrectResults = taskResults.filter(r => {
+            if (r.skipped) return false; // Skip skipped participants
+            
+            // Normalize participant path
+            const normalizedParticipantPath = normalizePath(r.pathTaken).toLowerCase();
+            
+            // Check if path matches any expected destination (exact or ends with)
+            const exactMatchIndex = normalizedExpectedPaths.indexOf(normalizedParticipantPath);
+            if (exactMatchIndex !== -1) {
+                return false; // Matches expected path, not incorrect
+            }
+            
+            // Check if path ends with any expected destination
+            for (let i = 0; i < normalizedExpectedPaths.length; i++) {
+                const normalizedExpected = normalizedExpectedPaths[i];
+                if (normalizedParticipantPath.endsWith(normalizedExpected)) {
+                    return false; // Ends with expected destination, not incorrect
+                }
+            }
+            
+            return true; // Doesn't match any expected path, it's incorrect
+        });
+        
+        // Group incorrect destinations by final destination node
+        // Track shortest path for each destination and count all paths ending there
+        const incorrectDestinationsMap = new Map<string, { count: number; shortestPath: string }>();
         incorrectResults.forEach(r => {
-            incorrectDestinationsMap.set(r.pathTaken, (incorrectDestinationsMap.get(r.pathTaken) || 0) + 1);
+            // Parse path and get the final destination (last node)
+            const parsedPath = parsePath(r.pathTaken);
+            const finalDestination = parsedPath.length > 0 ? parsedPath[parsedPath.length - 1] : r.pathTaken;
+            
+            // Normalize the path for length comparison (handle different separators)
+            const normalizedPath = normalizePath(r.pathTaken);
+            const pathLength = normalizedPath.split('|').filter(Boolean).length;
+            
+            if (incorrectDestinationsMap.has(finalDestination)) {
+                const existing = incorrectDestinationsMap.get(finalDestination)!;
+                existing.count += 1;
+                // Update shortest path if this path is shorter
+                const existingNormalized = normalizePath(existing.shortestPath);
+                const existingLength = existingNormalized.split('|').filter(Boolean).length;
+                if (pathLength < existingLength) {
+                    existing.shortestPath = r.pathTaken;
+                }
+            } else {
+                incorrectDestinationsMap.set(finalDestination, {
+                    count: 1,
+                    shortestPath: r.pathTaken
+                });
+            }
         });
 
         const totalIncorrect = incorrectResults.length;
-        const incorrectDestinations = Array.from(incorrectDestinationsMap.entries()).map(([path, count]) => ({
-            path,
-            count,
-            percentage: totalIncorrect ? Math.round((count / totalIncorrect) * 100) : 0,
-        }));
+        const incorrectDestinations = Array.from(incorrectDestinationsMap.values())
+            .map((data) => ({
+                path: data.shortestPath, // Show shortest path to this destination
+                count: data.count, // Count all paths ending at this destination
+                percentage: totalIncorrect ? Math.round((data.count / totalIncorrect) * 100) : 0,
+            }))
+            .sort((a, b) => b.count - a.count); // Sort by count descending
 
         // Confidence Ratings
         const confidenceValuesMap = new Map<number, any>();
