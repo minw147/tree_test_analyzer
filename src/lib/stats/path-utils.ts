@@ -155,3 +155,39 @@ export function pathContainsNode(participantPath: string, targetNode: string): b
     return false;
   }
 }
+
+/**
+ * Check if a participant's path has the correct node at a specific level
+ * This ensures the node appears at the correct position, not just anywhere
+ * @param participantPath - Participant's path string
+ * @param targetNode - Node name to check for
+ * @param level - Level number (1, 2, or 3) - where the node should appear
+ * @returns True if the node appears at the specified level position
+ */
+export function pathHasNodeAtLevel(participantPath: string, targetNode: string, level: number): boolean {
+  if (!participantPath || !targetNode || level < 1) {
+    return false;
+  }
+
+  try {
+    // Parse participant path
+    const participantNodes = parsePath(participantPath);
+    
+    if (participantNodes.length === 0) {
+      return false;
+    }
+
+    // Get the node at the specified level in the participant's path
+    const nodeAtLevel = getNodeAtLevel(participantNodes, level);
+    
+    if (!nodeAtLevel) {
+      return false;
+    }
+
+    // Case-insensitive comparison
+    return nodeAtLevel.toLowerCase().trim() === targetNode.trim().toLowerCase();
+  } catch (error) {
+    console.error('Path has node at level check error:', error);
+    return false;
+  }
+}

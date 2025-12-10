@@ -1,5 +1,5 @@
 import type { Participant } from '../types';
-import { parsePath, getNodeAtLevel, pathContainsNode } from './path-utils';
+import { parsePath, getNodeAtLevel } from './path-utils';
 
 /**
  * Statistics for a single parent node level
@@ -38,31 +38,59 @@ export function calculateParentNodeStats(
   participants: Participant[]
 ): ParentNodeStats | null {
   try {
-    // Parse expected path
-    // Handle multiple expected answers (comma-separated)
-    // Use the first expected answer for parent node calculation
-    const expectedAnswers = task.expectedAnswer.split(',').map(a => a.trim());
-    const firstExpectedAnswer = expectedAnswers[0] || '';
+    // Parse all expected paths (comma-separated)
+    const expectedAnswers = task.expectedAnswer.split(',').map(a => a.trim()).filter(a => a.length > 0);
 
-    if (!firstExpectedAnswer) {
+    if (expectedAnswers.length === 0) {
       return null;
     }
 
-    const expectedPath = parsePath(firstExpectedAnswer);
+    // Parse all expected paths
+    const expectedPaths = expectedAnswers.map(answer => parsePath(answer)).filter(path => path.length > 0);
 
-    if (expectedPath.length === 0) {
+    if (expectedPaths.length === 0) {
       return null;
     }
 
-    // Get nodes at each level
-    const level1Node = getNodeAtLevel(expectedPath, 1);
-    const level2Node = getNodeAtLevel(expectedPath, 2);
-    const level3Node = getNodeAtLevel(expectedPath, 3);
+    // Collect all possible nodes at each level from all expected paths
+    // Level 1: All unique nodes at level 1 across all expected paths
+    const level1Nodes = new Set<string>();
+    const level2Nodes = new Set<string>();
+    const level3Nodes = new Set<string>();
 
-    // If no level 1 node exists, return null
-    if (!level1Node) {
+    // Track if any path actually has level 2 or level 3 (not just final destination)
+    let hasActualLevel2 = false;
+    let hasActualLevel3 = false;
+
+    expectedPaths.forEach(path => {
+      const node1 = getNodeAtLevel(path, 1);
+      const node2 = getNodeAtLevel(path, 2);
+      const node3 = getNodeAtLevel(path, 3);
+
+      if (node1) level1Nodes.add(node1.toLowerCase().trim());
+      if (node2) {
+        level2Nodes.add(node2.toLowerCase().trim());
+        hasActualLevel2 = true;
+      }
+      if (node3) {
+        level3Nodes.add(node3.toLowerCase().trim());
+        hasActualLevel3 = true;
+      }
+    });
+
+    // If no level 1 nodes exist, return null
+    if (level1Nodes.size === 0) {
       return null;
     }
+
+    // For display, use the first expected path's node names (or combine if different)
+    // This is just for the display name - the calculation uses all nodes
+    const firstPath = expectedPaths[0];
+    const level1Node = getNodeAtLevel(firstPath, 1) || '';
+    // Only set level2Node if at least one path has an actual level 2
+    const level2Node = hasActualLevel2 ? getNodeAtLevel(firstPath, 2) : null;
+    // Only set level3Node if at least one path has an actual level 3
+    const level3Node = hasActualLevel3 ? getNodeAtLevel(firstPath, 3) : null;
 
     // Filter participants who have results for this task
     const participantsWithResults = participants.filter(p => {
@@ -96,22 +124,43 @@ export function calculateParentNodeStats(
 
     // Calculate for each level
     // Only count participants who didn't skip the task
+    // Count as success if they reached ANY of the correct nodes at that level from ANY expected path
+    // This includes both direct and indirect paths - as long as they visited the node, it counts
     const level1Count = participantsWithResults.filter(p => {
       const result = p.taskResults.find(r => r.taskIndex === task.index);
       if (!result || result.skipped) return false;
-      return pathContainsNode(result.pathTaken, level1Node);
+      // Check if they reached ANY of the level 1 nodes anywhere in their path
+      const participantNodes = parsePath(result.pathTaken);
+      return participantNodes.some(node => 
+        level1Nodes.has(node.toLowerCase().trim())
+      );
     }).length;
 
-    const level2Count = level2Node ? participantsWithResults.filter(p => {
+    const level2Count = (hasActualLevel2 && level2Nodes.size > 0) ? participantsWithResults.filter(p => {
       const result = p.taskResults.find(r => r.taskIndex === task.index);
       if (!result || result.skipped) return false;
-      return pathContainsNode(result.pathTaken, level2Node);
+      // Check if they reached ANY of the level 2 nodes anywhere in their path
+      const participantNodes = parsePath(result.pathTaken);
+      return participantNodes.some(node => 
+        level2Nodes.has(node.toLowerCase().trim())
+      );
     }).length : 0;
 
-    const level3Count = level3Node ? participantsWithResults.filter(p => {
+    const level3Count = (hasActualLevel3 && level3Nodes.size > 0) ? participantsWithResults.filter(p => {
       const result = p.taskResults.find(r => r.taskIndex === task.index);
       if (!result || result.skipped) return false;
-      return pathContainsNode(result.pathTaken, level3Node);
+      
+      // First, check if they reached the final destination of any expected path
+      // This ensures that if they successfully completed the task, they count for level 3
+      if (result.successful) {
+        return true;
+      }
+      
+      // Otherwise, check if they reached ANY of the level 3 nodes anywhere in their path
+      const participantNodes = parsePath(result.pathTaken);
+      return participantNodes.some(node => 
+        level3Nodes.has(node.toLowerCase().trim())
+      );
     }).length : 0;
 
     return {
@@ -121,17 +170,17 @@ export function calculateParentNodeStats(
         total: totalParticipants,
         nodeName: level1Node
       },
-      level2: level2Node ? {
+      level2: (hasActualLevel2 && level2Nodes.size > 0) ? {
         rate: totalParticipants > 0 ? (level2Count / totalParticipants) * 100 : 0,
         count: level2Count,
         total: totalParticipants,
-        nodeName: level2Node
+        nodeName: level2Node || Array.from(level2Nodes).join(' or ')
       } : null,
-      level3: level3Node ? {
+      level3: (hasActualLevel3 && level3Nodes.size > 0) ? {
         rate: totalParticipants > 0 ? (level3Count / totalParticipants) * 100 : 0,
         count: level3Count,
         total: totalParticipants,
-        nodeName: level3Node
+        nodeName: level3Node || Array.from(level3Nodes).join(' or ')
       } : null
     };
   } catch (error) {

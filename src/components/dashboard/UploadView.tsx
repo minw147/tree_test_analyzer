@@ -223,36 +223,84 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
             const data = await parseResponseData(resultsFile);
             data.treeStructure = parseTreeFromString(treeContent);
 
-            // Set sample task instructions and expected answers
+            // Set comprehensive sample task instructions and expected answers
+            // Task 1: Multiple paths diverging at Level 3 (Electronics -> Laptops or Smartphones)
+            // Task 2: Multiple paths diverging at Level 1 (Products vs Services)
+            // Task 3: Multiple paths diverging at Level 2 (Electronics vs Clothing)
+            // Task 4: Single path (baseline)
             const sampleTasks = [
-                { description: "Find Laptops", expectedAnswer: "/Home/Products/Electronics/Laptops, /Home/Products/Electronics/Smartphones" },
-                { description: "Find Career Opportunities", expectedAnswer: "/Home/About Us/Careers" },
-                { description: "Contact Support", expectedAnswer: "/Home/Contact" }
+                { 
+                    description: "Find Electronics Product", 
+                    expectedAnswer: "/Home/Products/Electronics/Laptops, /Home/Products/Electronics/Smartphones" 
+                },
+                { 
+                    description: "Get Help or Browse Products", 
+                    expectedAnswer: "/Home/Services/Support, /Home/Products/Electronics/Laptops" 
+                },
+                { 
+                    description: "Find Clothing or Electronics", 
+                    expectedAnswer: "/Home/Products/Clothing/Men/Shirts, /Home/Products/Electronics/Laptops" 
+                },
+                { 
+                    description: "Find Career Opportunities", 
+                    expectedAnswer: "/Home/About Us/Careers" 
+                }
             ];
 
             setTaskInstructions(sampleTasks.map(t => t.description));
             setExpectedPaths(sampleTasks.map(t => t.expectedAnswer.split(",").map(p => p.trim())));
 
             // Apply sample instructions and expected answers to data
-            data.tasks.forEach((task, index) => {
-                if (sampleTasks[index]) {
-                    task.description = sampleTasks[index].description;
-                    task.expectedAnswer = sampleTasks[index].expectedAnswer;
-                }
-            });
+            // Ensure we have exactly 4 tasks
+            // First, clear existing tasks and create new ones
+            data.tasks = [];
+            for (let i = 0; i < 4; i++) {
+                const newTask = {
+                    id: `task-${i + 1}`,
+                    index: i + 1,
+                    description: sampleTasks[i]?.description || "",
+                    expectedAnswer: sampleTasks[i]?.expectedAnswer || ""
+                };
+                data.tasks.push(newTask);
+            }
 
-            // Modify some participants to use the alternative path for Task 1
-            if (data.participants.length > 6 && data.tasks.length > 0) {
-                const firstTaskIndex = data.tasks[0].index;
-                const altPath = "/Home/Products/Electronics/Smartphones";
-                const task1Expected = sampleTasks[0].expectedAnswer.split(",").map(p => p.trim());
+            // Ensure we have exactly 20 participants with task results for all 4 tasks
+            // Clear existing participants and create new ones
+            data.participants = [];
+            for (let i = 0; i < 20; i++) {
+                const startedAt = new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000);
+                const newParticipant = {
+                    id: `participant-${i + 1}`,
+                    status: 'Completed' as const,
+                    startedAt: startedAt,
+                    completedAt: new Date(startedAt.getTime() + (Math.floor(Math.random() * 300) + 60) * 1000),
+                    durationSeconds: Math.floor(Math.random() * 300) + 60,
+                    taskResults: data.tasks.map(task => ({
+                        taskId: task.id,
+                        taskIndex: task.index,
+                        description: task.description,
+                        successful: false,
+                        directPathTaken: false,
+                        completionTimeSeconds: Math.floor(Math.random() * 120) + 10,
+                        pathTaken: "/Home",
+                        skipped: false,
+                        confidenceRating: Math.floor(Math.random() * 7) + 1
+                    }))
+                };
+                data.participants.push(newParticipant);
+            }
 
-                // 1. Inject Alternative Path (Direct Success)
-                [2, 3].forEach(pIndex => {
+            // Task 1: Multiple paths diverging at Level 3 (Laptops vs Smartphones)
+            // Test parent node success: Level 1 (Products), Level 2 (Electronics), Level 3 (Laptops/Smartphones)
+            const task1Index = data.tasks[0]?.index;
+            if (task1Index !== undefined) {
+                
+                // Direct success - Laptops path (8 participants)
+                [0, 1, 2, 3, 4, 5, 6, 7].forEach(pIndex => {
                     if (data.participants[pIndex]) {
-                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === firstTaskIndex);
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task1Index);
                         if (r) {
-                            r.pathTaken = altPath;
+                            r.pathTaken = "/Home/Products/Electronics/Laptops";
                             r.successful = true;
                             r.directPathTaken = true;
                             r.skipped = false;
@@ -260,35 +308,287 @@ export function UploadView({ onDataLoaded }: UploadViewProps) {
                     }
                 });
 
-                // 2. Fix "Indirect Success" for seemingly direct paths
-                data.participants.forEach(p => {
-                    const r = p.taskResults.find(tr => tr.taskIndex === firstTaskIndex);
-                    if (r && r.successful) {
-                        if (task1Expected.includes(r.pathTaken)) {
+                // Direct success - Smartphones path (4 participants)
+                [8, 9, 10, 11].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task1Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Products/Electronics/Smartphones";
+                            r.successful = true;
                             r.directPathTaken = true;
+                            r.skipped = false;
                         }
                     }
                 });
 
-                // 3. Simulate Indirect Success (Wandering)
-                const p5 = data.participants[5];
-                const r5 = p5?.taskResults.find(tr => tr.taskIndex === firstTaskIndex);
-                if (r5) {
-                    r5.pathTaken = "/Home/About Us/Home/Products/Electronics/Laptops";
-                    r5.successful = true;
-                    r5.directPathTaken = false;
-                    r5.skipped = false;
-                }
+                // Indirect success with backtracking - visited wrong parent first, then found correct path (2 participants)
+                // This demonstrates "Clicked During Task" being higher than "Clicked First"
+                [12, 13].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task1Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Services/Home/Products/Electronics/Laptops";
+                            r.successful = true; // Eventually found correct path
+                            r.directPathTaken = false; // Indirect due to backtracking
+                            r.skipped = false;
+                        }
+                    }
+                });
 
-                // 4. Simulate Backtracking (Wrong branch)
-                const p6 = data.participants[6];
-                const r6 = p6?.taskResults.find(tr => tr.taskIndex === firstTaskIndex);
-                if (r6) {
-                    r6.pathTaken = "/Home/Services/Support/Home/Products/Electronics/Laptops";
-                    r6.successful = true;
-                    r6.directPathTaken = false;
-                    r6.skipped = false;
-                }
+                // Reached Products but not Electronics (2 participants) - should count for Level 1
+                [14, 15].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task1Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Products";
+                            r.successful = false;
+                            r.directPathTaken = false;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Failed - went to wrong branch (2 participants)
+                [16, 17].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task1Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Services/Support";
+                            r.successful = false;
+                            r.directPathTaken = false;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Skipped (2 participants)
+                [18, 19].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task1Index);
+                        if (r) {
+                            r.skipped = true;
+                        }
+                    }
+                });
+            }
+
+            // Task 2: Multiple paths diverging at Level 1 (Products vs Services)
+            // Test parent node success: Level 1 (Products or Services)
+            const task2Index = data.tasks[1]?.index;
+            if (task2Index !== undefined) {
+                
+                // Direct success - Support path (6 participants)
+                [0, 1, 2, 3, 4, 5].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task2Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Services/Support";
+                            r.successful = true;
+                            r.directPathTaken = true;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Direct success - Laptops path (6 participants)
+                [6, 7, 8, 9, 10, 11].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task2Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Products/Electronics/Laptops";
+                            r.successful = true;
+                            r.directPathTaken = true;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Backtracking: Started with Products, then went to Services/Support (2 participants)
+                // Shows clicking both parent nodes during task
+                [12, 13].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task2Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Products/Home/Services/Support";
+                            r.successful = true; // Eventually reached correct destination
+                            r.directPathTaken = false; // Indirect due to backtracking
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Backtracking: Started with Services, then went to Products/Electronics/Laptops (2 participants)
+                // Shows clicking both parent nodes during task
+                [14, 15].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task2Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Services/Home/Products/Electronics/Laptops";
+                            r.successful = true; // Eventually reached correct destination
+                            r.directPathTaken = false; // Indirect due to backtracking
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Failed - went to wrong branch (2 participants)
+                [16, 17].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task2Index);
+                        if (r) {
+                            r.pathTaken = "/Home/About Us/Careers";
+                            r.successful = false;
+                            r.directPathTaken = false;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Skipped (2 participants)
+                [18, 19].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task2Index);
+                        if (r) {
+                            r.skipped = true;
+                        }
+                    }
+                });
+            }
+
+            // Task 3: Multiple paths diverging at Level 2 (Electronics vs Clothing)
+            // Test parent node success: Level 1 (Products), Level 2 (Electronics or Clothing)
+            const task3Index = data.tasks[2]?.index;
+            if (task3Index !== undefined) {
+                
+                // Direct success - Shirts path (7 participants)
+                [0, 1, 2, 3, 4, 5, 6].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task3Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Products/Clothing/Men/Shirts";
+                            r.successful = true;
+                            r.directPathTaken = true;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Direct success - Laptops path (5 participants)
+                [7, 8, 9, 10, 11].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task3Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Products/Electronics/Laptops";
+                            r.successful = true;
+                            r.directPathTaken = true;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Backtracking: Tried Electronics first, then went to Clothing/Men/Shirts (2 participants)
+                // Shows clicking both level 2 parent nodes during task
+                [12, 13].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task3Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Products/Electronics/Home/Products/Clothing/Men/Shirts";
+                            r.successful = true; // Eventually found correct path
+                            r.directPathTaken = false; // Indirect due to backtracking
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Backtracking: Tried Clothing first, then went to Electronics/Laptops (2 participants)
+                // Shows clicking both level 2 parent nodes during task
+                [14, 15].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task3Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Products/Clothing/Home/Products/Electronics/Laptops";
+                            r.successful = true; // Eventually found correct path
+                            r.directPathTaken = false; // Indirect due to backtracking
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Reached Products but not Electronics/Clothing (2 participants) - should count for Level 1
+                [16, 17].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task3Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Products";
+                            r.successful = false;
+                            r.directPathTaken = false;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Skipped (2 participants)
+                [18, 19].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task3Index);
+                        if (r) {
+                            r.skipped = true;
+                        }
+                    }
+                });
+            }
+
+            // Task 4: Single path (baseline for comparison)
+            const task4Index = data.tasks[3]?.index;
+            if (task4Index !== undefined) {
+                // Direct success (12 participants)
+                [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task4Index);
+                        if (r) {
+                            r.pathTaken = "/Home/About Us/Careers";
+                            r.successful = true;
+                            r.directPathTaken = true;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Indirect success (4 participants)
+                [12, 13, 14, 15].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task4Index);
+                        if (r) {
+                            r.pathTaken = "/Home/About Us/Home/About Us/Careers";
+                            r.successful = true;
+                            r.directPathTaken = false;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Failed (2 participants)
+                [16, 17].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task4Index);
+                        if (r) {
+                            r.pathTaken = "/Home/Contact";
+                            r.successful = false;
+                            r.directPathTaken = false;
+                            r.skipped = false;
+                        }
+                    }
+                });
+
+                // Skipped (2 participants)
+                [18, 19].forEach(pIndex => {
+                    if (data.participants[pIndex]) {
+                        const r = data.participants[pIndex].taskResults.find(tr => tr.taskIndex === task4Index);
+                        if (r) {
+                            r.skipped = true;
+                        }
+                    }
+                });
             }
 
             setTreeText(treeContent);

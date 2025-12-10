@@ -1,5 +1,6 @@
 import type { UploadedData } from "./types";
 import { calculateOverviewStats, calculateTaskStats } from "./stats";
+import { getPathUpToLevel } from "./stats/path-utils";
 
 /**
  * Generate a comprehensive HTML report with all views expanded
@@ -582,10 +583,14 @@ export function generateHtmlReport(data: UploadedData): string {
                 <tbody>
                   ${task.stats.parentNodeStats.level1 ? (() => {
                     const margin = Math.sqrt((task.stats.parentNodeStats!.level1.rate * (100 - task.stats.parentNodeStats!.level1.rate)) / task.stats.parentNodeStats!.level1.total) * 1.96;
+                    const expectedAnswers = task.expectedAnswer.split(',').map(a => a.trim()).filter(a => a.length > 0);
+                    const expectedPaths = Array.from(new Set(expectedAnswers.map(path => getPathUpToLevel(path, 1)).filter(p => p.length > 0)));
                     return `
                     <tr>
                       <td>1st Level</td>
-                      <td style="font-family: monospace; font-size: 12px;">${escapeHtml(task.expectedAnswer.split('->')[0]?.trim() || task.stats.parentNodeStats!.level1.nodeName)}</td>
+                      <td style="font-family: monospace; font-size: 12px;">
+                        ${expectedPaths.map(path => escapeHtml(path)).join('<br>')}
+                      </td>
                       <td style="font-weight: bold; color: ${getMetricColorValue(task.stats.parentNodeStats!.level1.rate)}">${task.stats.parentNodeStats!.level1.rate.toFixed(1)}%</td>
                       <td>${task.stats.parentNodeStats!.level1.count} / ${task.stats.parentNodeStats!.level1.total}</td>
                       <td style="color: #6b7280; font-size: 12px;">±${margin.toFixed(1)}%</td>
@@ -594,10 +599,14 @@ export function generateHtmlReport(data: UploadedData): string {
                   })() : ''}
                   ${task.stats.parentNodeStats.level2 ? (() => {
                     const margin = Math.sqrt((task.stats.parentNodeStats!.level2!.rate * (100 - task.stats.parentNodeStats!.level2!.rate)) / task.stats.parentNodeStats!.level2!.total) * 1.96;
+                    const expectedAnswers = task.expectedAnswer.split(',').map(a => a.trim()).filter(a => a.length > 0);
+                    const expectedPaths = Array.from(new Set(expectedAnswers.map(path => getPathUpToLevel(path, 2)).filter(p => p.length > 0)));
                     return `
                     <tr>
                       <td>2nd Level</td>
-                      <td style="font-family: monospace; font-size: 12px;">${escapeHtml(task.expectedAnswer.split('->').slice(0, 2).join(' -> ').trim())}</td>
+                      <td style="font-family: monospace; font-size: 12px;">
+                        ${expectedPaths.map(path => escapeHtml(path)).join('<br>')}
+                      </td>
                       <td style="font-weight: bold; color: ${getMetricColorValue(task.stats.parentNodeStats!.level2!.rate)}">${task.stats.parentNodeStats!.level2!.rate.toFixed(1)}%</td>
                       <td>${task.stats.parentNodeStats!.level2!.count} / ${task.stats.parentNodeStats!.level2!.total}</td>
                       <td style="color: #6b7280; font-size: 12px;">±${margin.toFixed(1)}%</td>
@@ -606,10 +615,14 @@ export function generateHtmlReport(data: UploadedData): string {
                   })() : ''}
                   ${task.stats.parentNodeStats.level3 ? (() => {
                     const margin = Math.sqrt((task.stats.parentNodeStats!.level3!.rate * (100 - task.stats.parentNodeStats!.level3!.rate)) / task.stats.parentNodeStats!.level3!.total) * 1.96;
+                    const expectedAnswers = task.expectedAnswer.split(',').map(a => a.trim()).filter(a => a.length > 0);
+                    const expectedPaths = Array.from(new Set(expectedAnswers.map(path => getPathUpToLevel(path, 3)).filter(p => p.length > 0)));
                     return `
                     <tr>
                       <td>3rd Level</td>
-                      <td style="font-family: monospace; font-size: 12px;">${escapeHtml(task.expectedAnswer.split('->').slice(0, 3).join(' -> ').trim())}</td>
+                      <td style="font-family: monospace; font-size: 12px;">
+                        ${expectedPaths.map(path => escapeHtml(path)).join('<br>')}
+                      </td>
                       <td style="font-weight: bold; color: ${getMetricColorValue(task.stats.parentNodeStats!.level3!.rate)}">${task.stats.parentNodeStats!.level3!.rate.toFixed(1)}%</td>
                       <td>${task.stats.parentNodeStats!.level3!.count} / ${task.stats.parentNodeStats!.level3!.total}</td>
                       <td style="color: #6b7280; font-size: 12px;">±${margin.toFixed(1)}%</td>

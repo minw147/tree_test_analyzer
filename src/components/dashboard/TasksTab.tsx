@@ -376,7 +376,7 @@ export function TasksTab({ data }: TasksTabProps) {
                                                                                     style={{ width: `${rating.breakdown.indirectSuccessPercentage}%` }}
                                                                                 >
                                                                                     {rating.breakdown.indirectSuccess > 0 && rating.breakdown.indirectSuccessPercentage >= 15 && (
-                                                                                        <span>{rating.breakdown.indirectSuccess}</span>
+                                                                                        <span>{rating.breakdown.indirectSuccess} ({rating.breakdown.indirectSuccessPercentage}%)</span>
                                                                                     )}
                                                                                 </div>
                                                                             )}
@@ -386,7 +386,7 @@ export function TasksTab({ data }: TasksTabProps) {
                                                                                     style={{ width: `${rating.breakdown.directFailPercentage}%` }}
                                                                                 >
                                                                                     {rating.breakdown.directFail > 0 && rating.breakdown.directFailPercentage >= 15 && (
-                                                                                        <span>{rating.breakdown.directFail}</span>
+                                                                                        <span>{rating.breakdown.directFail} ({rating.breakdown.directFailPercentage}%)</span>
                                                                                     )}
                                                                                 </div>
                                                                             )}
@@ -396,7 +396,7 @@ export function TasksTab({ data }: TasksTabProps) {
                                                                                     style={{ width: `${rating.breakdown.indirectFailPercentage}%` }}
                                                                                 >
                                                                                     {rating.breakdown.indirectFail > 0 && rating.breakdown.indirectFailPercentage >= 15 && (
-                                                                                        <span>{rating.breakdown.indirectFail}</span>
+                                                                                        <span>{rating.breakdown.indirectFail} ({rating.breakdown.indirectFailPercentage}%)</span>
                                                                                     )}
                                                                                 </div>
                                                                             )}
