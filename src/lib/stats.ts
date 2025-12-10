@@ -82,8 +82,11 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
             p.taskResults.filter(r => r.taskIndex === task.index)
         );
 
-        // Determine expected paths first
-        const expectedAnswers = task.expectedAnswer.split(",").map(a => a.trim());
+        // Determine expected paths first (filter out empties)
+        const expectedAnswers = task.expectedAnswer
+            .split(",")
+            .map(a => a.trim())
+            .filter(a => a.length > 0);
 
         // Calculate parent node stats (safe - wrapped in try-catch)
         let parentNodeStats;
@@ -129,14 +132,47 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         // Use original task results without modifying success status
         const taskResults = rawTaskResults;
 
-        // Normalize expected answers to consistent format for comparison
-        const normalizedExpectedPaths = expectedAnswers.map(path => normalizePath(path).toLowerCase());
-        
-        // Extract final destination nodes from expected paths
-        const expectedFinalDestinations = expectedAnswers.map(path => {
+        // Normalize expected answers and extract final destinations (keep arrays aligned)
+        const normalizedExpectedPaths: string[] = [];
+        const expectedFinalDestinations: string[] = [];
+        expectedAnswers.forEach(path => {
+            const normalized = normalizePath(path).toLowerCase();
             const parsed = parsePath(path);
-            return parsed.length > 0 ? parsed[parsed.length - 1].toLowerCase() : null;
-        }).filter(Boolean) as string[];
+            const finalNode = parsed.length > 0 ? parsed[parsed.length - 1].toLowerCase() : null;
+
+            if (normalized && finalNode) {
+                normalizedExpectedPaths.push(normalized);
+                expectedFinalDestinations.push(finalNode);
+            }
+        });
+
+        // If no valid expected paths, leave path distribution empty
+        if (normalizedExpectedPaths.length === 0 || expectedFinalDestinations.length === 0) {
+            return {
+                ...task,
+                maxTimeSeconds: null,
+                parsedTree: JSON.stringify(tree),
+                stats: {
+                    success: { rate: 0, margin: 0 },
+                    directness: { rate: 0, margin: 0 },
+                    time: { median: 0, min: 0, max: 0, q1: 0, q3: 0 },
+                    score: 0,
+                    breakdown: {
+                        directSuccess: 0, indirectSuccess: 0, directFail: 0, indirectFail: 0,
+                        directSkip: 0, indirectSkip: 0, total: 0
+                    },
+                    parentClicks: [],
+                    incorrectDestinations: [],
+                    confidenceRatings: [],
+                    pathDistribution: [],
+                    parentNodeStats: parentNodeStats ? {
+                        level1: parentNodeStats.level1,
+                        level2: parentNodeStats.level2,
+                        level3: parentNodeStats.level3
+                    } : undefined,
+                }
+            };
+        }
 
         // Count paths for path distribution
         // Count ANY participant who reached an expected destination (determines success independently)
