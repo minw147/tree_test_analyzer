@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { ParticipantPreview } from "@/components/participant/ParticipantPreview";
-import type { StudyConfig } from "@/lib/types/study";
+import type { StudyConfig, Task } from "@/lib/types/study";
+import { shuffleTasks } from "@/lib/utils/task-randomizer";
 
 export function Preview() {
     const [study, setStudy] = useState<StudyConfig | null>(null);
+    const [shuffledTasks, setShuffledTasks] = useState<Task[] | null>(null);
 
     useEffect(() => {
         // Load study from sessionStorage
@@ -18,6 +20,18 @@ export function Preview() {
         }
     }, []);
 
+    // Initialize shuffled tasks when study loads
+    useEffect(() => {
+        if (study) {
+            if (study.settings.randomizeTasks === true && study.tasks.length > 1) {
+                const shuffled = shuffleTasks(study.tasks);
+                setShuffledTasks(shuffled);
+            } else {
+                setShuffledTasks(null);
+            }
+        }
+    }, [study]);
+
     if (!study) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -31,6 +45,6 @@ export function Preview() {
         );
     }
 
-    return <ParticipantPreview study={study} isPreview={true} />;
+    return <ParticipantPreview study={study} shuffledTasks={shuffledTasks} isPreview={true} />;
 }
 

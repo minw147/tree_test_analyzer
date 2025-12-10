@@ -31,6 +31,7 @@ export interface StudySettings {
     welcomeMessage: string;
     instructions: string;
     completedMessage: string;
+    randomizeTasks?: boolean; // Randomize task order for each participant
     customText?: {
         startTest?: string;
         nextButton?: string;

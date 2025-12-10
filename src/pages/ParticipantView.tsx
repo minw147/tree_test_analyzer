@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { ParticipantPreview } from "@/components/participant/ParticipantPreview";
-import type { StudyConfig, ParticipantResult, TaskResult, PathOutcome } from "@/lib/types/study";
+import type { StudyConfig, ParticipantResult, TaskResult, PathOutcome, Task } from "@/lib/types/study";
 import { createStorageAdapter } from "@/lib/storage/factory";
 import { Loader2, AlertCircle, XCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { shuffleTasks } from "@/lib/utils/task-randomizer";
 
 type LoadingState = 'loading' | 'error' | 'closed' | 'ready';
 
@@ -29,6 +30,11 @@ export function ParticipantView() {
     const taskPaths = useRef<Map<number, string[]>>(new Map());
     const taskClicks = useRef<Map<number, number>>(new Map());
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Task randomization state
+    const [shuffledTasks, setShuffledTasks] = useState<Task[] | null>(null);
+    const shuffledTaskIdToIndex = useRef<Map<string, number>>(new Map()); // Maps task ID → shuffled index
+    const shuffledIndexToTaskId = useRef<Map<number, string>>(new Map()); // Maps shuffled index → task ID
 
     useEffect(() => {
         if (!studyId) {
@@ -42,6 +48,35 @@ export function ParticipantView() {
 
         loadStudyConfig(studyId);
     }, [studyId]);
+
+    // Initialize shuffled tasks when study loads
+    useEffect(() => {
+        if (state.study && state.loadingState === 'ready') {
+            initializeShuffledTasks(state.study);
+        }
+    }, [state.study, state.loadingState]);
+
+    const initializeShuffledTasks = (study: StudyConfig) => {
+        if (study.settings.randomizeTasks === true && study.tasks.length > 1) {
+            const shuffled = shuffleTasks(study.tasks);
+            setShuffledTasks(shuffled);
+            
+            // Create mapping: taskId → shuffled index
+            const idToIndex = new Map<string, number>();
+            const indexToId = new Map<number, string>();
+            shuffled.forEach((task, index) => {
+                idToIndex.set(task.id, index);
+                indexToId.set(index, task.id);
+            });
+            shuffledTaskIdToIndex.current = idToIndex;
+            shuffledIndexToTaskId.current = indexToId;
+        } else {
+            // No randomization
+            setShuffledTasks(null);
+            shuffledTaskIdToIndex.current.clear();
+            shuffledIndexToTaskId.current.clear();
+        }
+    };
 
     const loadStudyConfig = async (id: string) => {
         try {
@@ -396,12 +431,19 @@ export function ParticipantView() {
             // Calculate total active time
             const totalActiveTime = Math.floor((Date.now() - testStartTime.current) / 1000);
 
-            // Build task results
-            const taskResults: TaskResult[] = state.study.tasks.map((task, index) => {
-                const taskResult = allTaskResults.find(tr => tr.taskIndex === index);
-                const taskStartTime = taskStartTimes.current.get(index) || testStartTime.current;
+            // Build task results - always iterate over ORIGINAL tasks in original order
+            const taskResults: TaskResult[] = state.study.tasks.map((task) => {
+                // Find result by taskId (handles both randomized and non-randomized cases)
+                // If randomized, we need to find the shuffled index for this task
+                const shuffledIndex = shuffledTaskIdToIndex.current.get(task.id);
+                const displayIndex = shuffledIndex !== undefined 
+                    ? shuffledIndex 
+                    : (state.study?.tasks.findIndex(t => t.id === task.id) ?? -1);
+                
+                const taskResult = allTaskResults.find(tr => tr.taskIndex === displayIndex);
+                const taskStartTime = taskStartTimes.current.get(displayIndex) || testStartTime.current;
                 const taskTime = Math.floor((Date.now() - taskStartTime) / 1000);
-                const pathTaken = taskPaths.current.get(index) || [];
+                const pathTaken = taskPaths.current.get(displayIndex) || [];
                 
                 // Determine outcome based on correct path
                 let outcome: PathOutcome = 'failure';
@@ -409,15 +451,15 @@ export function ParticipantView() {
                     // Check if task was skipped (empty selectedPath)
                     if (!taskResult.selectedPath || taskResult.selectedPath === "") {
                         // Determine if direct skip (no interaction) or indirect skip (some interaction)
-                        const clicks = taskClicks.current.get(index) || 0;
-                        const pathTaken = taskPaths.current.get(index) || [];
+                        const clicks = taskClicks.current.get(displayIndex) || 0;
+                        const pathTakenForSkip = taskPaths.current.get(displayIndex) || [];
                         // If no clicks and no path taken, it's a direct skip
                         // If there were clicks or path taken, it's an indirect skip
-                        outcome = (clicks === 0 && pathTaken.length === 0) ? 'direct-skip' : 'indirect-skip';
+                        outcome = (clicks === 0 && pathTakenForSkip.length === 0) ? 'direct-skip' : 'indirect-skip';
                     } else {
                         // Normalize selected path (remove leading slash, split into parts)
                         const selectedPathParts = taskResult.selectedPath.split('/').filter(Boolean);
-                        const pathTaken = taskPaths.current.get(index) || [];
+                        const pathTakenForCheck = taskPaths.current.get(displayIndex) || [];
                         const correctPaths = task.correctPath || [];
                         
                         // Check if selected path matches any correct path
@@ -437,10 +479,10 @@ export function ParticipantView() {
                             const pathTakenMatchesExactly = correctPaths.some(correctPath => {
                                 const correctParts = correctPath.split('/').filter(Boolean);
                                 // Path taken must match exactly in length and content
-                                if (pathTaken.length !== correctParts.length) {
+                                if (pathTakenForCheck.length !== correctParts.length) {
                                     return false;
                                 }
-                                return pathTaken.every((node, i) => node === correctParts[i]);
+                                return pathTakenForCheck.every((node, i) => node === correctParts[i]);
                             });
                             
                             // Direct success: path taken exactly matches expected path (no detours)
@@ -550,6 +592,7 @@ export function ParticipantView() {
     return (
         <ParticipantViewWithTracking
             study={state.study}
+            shuffledTasks={shuffledTasks}
             onTestStart={handleTestStart}
             onNodeClick={handleNodeClick}
             onTestComplete={handleTestComplete}
@@ -562,6 +605,7 @@ export function ParticipantView() {
 // Wrapper component that adds tracking to ParticipantPreview
 interface ParticipantViewWithTrackingProps {
     study: StudyConfig;
+    shuffledTasks: Task[] | null;
     onTestStart: (taskIndex: number) => void;
     onNodeClick: (taskIndex: number, path: string) => void;
     onTestComplete: (results: Array<{ taskIndex: number; selectedPath: string; confidence?: number }>) => void;
@@ -571,6 +615,7 @@ interface ParticipantViewWithTrackingProps {
 
 function ParticipantViewWithTracking({
     study,
+    shuffledTasks,
     onTestStart,
     onNodeClick,
     onTestComplete,
@@ -580,6 +625,7 @@ function ParticipantViewWithTracking({
     return (
         <ParticipantPreview 
             study={study}
+            shuffledTasks={shuffledTasks}
             onTestStart={onTestStart}
             onNodeClick={onNodeClick}
             onTaskComplete={handleTaskComplete}
