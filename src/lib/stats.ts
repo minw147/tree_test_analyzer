@@ -130,23 +130,19 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         }
 
         // Calculate path distribution
-        // Group by final destination node (like incorrect destinations)
-        // Track shortest path for each destination and count all paths ending there
+        // Derive from participant paths: group successful (direct or indirect) by final destination node
         const pathDistributionMap = new Map<string, { count: number; shortestPath: string }>();
-        
+
         // Use original task results without modifying success status
         const taskResults = rawTaskResults;
 
-        // Count paths for path distribution
-        // Count any successful (direct or indirect) participant who reached a destination
-        taskResults.forEach(r => {
-            if (r.skipped || !r.successful) return; // Only successful, non-skipped
+        // Consider only successful, non-skipped participants
+        const successfulResults = taskResults.filter(r => !r.skipped && r.successful);
 
-            // Parse path and get final destination node
+        successfulResults.forEach(r => {
             const parsedPath = parsePath(r.pathTaken);
             if (parsedPath.length === 0) return;
             const finalDestination = parsedPath[parsedPath.length - 1].toLowerCase();
-
             const pathLength = parsedPath.length;
 
             if (pathDistributionMap.has(finalDestination)) {
@@ -194,19 +190,12 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         const score = Math.round(successRate * 0.7 + directnessRate * 0.3);
 
         // Path Distribution Stats
-        // Calculate total successful paths (direct + indirect success) for percentage denominator
-        const totalSuccessfulPaths = breakdown.directSuccess + breakdown.indirectSuccess;
-        // Alternative: total paths ending at correct destinations (from our map)
-        const totalMatchedPaths = Array.from(pathDistributionMap.values()).reduce((sum, data) => sum + data.count, 0);
-        
-        // Use totalMatchedPaths if available (more accurate), otherwise fall back to breakdown
-        const denominator = totalMatchedPaths > 0 ? totalMatchedPaths : totalSuccessfulPaths;
-        
+        const totalSuccessfulPaths = successfulResults.length;
         const pathDistribution = Array.from(pathDistributionMap.values())
             .map((data) => ({
                 path: data.shortestPath, // Show shortest path to this destination
                 count: data.count, // Count all paths ending at this destination
-                percentage: denominator > 0 ? Math.round((data.count / denominator) * 100) : 0
+                percentage: totalSuccessfulPaths > 0 ? Math.round((data.count / totalSuccessfulPaths) * 100) : 0
             }))
             .sort((a, b) => b.count - a.count); // Sort by count descending
 
