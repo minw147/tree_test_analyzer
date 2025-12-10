@@ -34,8 +34,7 @@ export function TasksTab({ data }: TasksTabProps) {
     const pieData = [
         { name: "Direct Success", value: selectedTask.stats.breakdown.directSuccess, color: "bg-green-500" },
         { name: "Indirect Success", value: selectedTask.stats.breakdown.indirectSuccess, color: "bg-green-300" },
-        { name: "Direct Fail", value: selectedTask.stats.breakdown.directFail, color: "bg-red-500" },
-        { name: "Indirect Fail", value: selectedTask.stats.breakdown.indirectFail, color: "bg-red-300" },
+        { name: "Fail", value: selectedTask.stats.breakdown.fail, color: "bg-red-500" },
         { name: "Skip", value: selectedTask.stats.breakdown.directSkip + selectedTask.stats.breakdown.indirectSkip, color: "bg-gray-500" },
     ].filter((d) => d.value > 0);
 
@@ -170,7 +169,7 @@ export function TasksTab({ data }: TasksTabProps) {
                                     <div className={`text-2xl font-bold ${getMetricColor(selectedTask.stats.directness.rate)}`}>{selectedTask.stats.directness.rate}%</div>
                                     <div className="text-xs text-gray-500">Directness</div>
                                     <div className="text-[10px] text-gray-400">
-                                        {selectedTask.stats.breakdown.directSuccess + selectedTask.stats.breakdown.directFail} / {totalParticipants} participants
+                                        {selectedTask.stats.breakdown.directSuccess} / {totalParticipants} participants
                                     </div>
                                     <div className="text-[10px] text-gray-400">±{selectedTask.stats.directness.margin}%</div>
                                 </div>
@@ -380,26 +379,16 @@ export function TasksTab({ data }: TasksTabProps) {
                                                                                     )}
                                                                                 </div>
                                                                             )}
-                                                                            {rating.breakdown.directFail > 0 && (
-                                                                                <div
-                                                                                    className="bg-red-500 flex items-center justify-center text-xs text-white font-medium"
-                                                                                    style={{ width: `${rating.breakdown.directFailPercentage}%` }}
-                                                                                >
-                                                                                    {rating.breakdown.directFail > 0 && rating.breakdown.directFailPercentage >= 15 && (
-                                                                                        <span>{rating.breakdown.directFail} ({rating.breakdown.directFailPercentage}%)</span>
-                                                                                    )}
-                                                                                </div>
-                                                                            )}
-                                                                            {rating.breakdown.indirectFail > 0 && (
-                                                                                <div
-                                                                                    className="bg-red-300 flex items-center justify-center text-xs text-gray-700 font-medium"
-                                                                                    style={{ width: `${rating.breakdown.indirectFailPercentage}%` }}
-                                                                                >
-                                                                                    {rating.breakdown.indirectFail > 0 && rating.breakdown.indirectFailPercentage >= 15 && (
-                                                                                        <span>{rating.breakdown.indirectFail} ({rating.breakdown.indirectFailPercentage}%)</span>
-                                                                                    )}
-                                                                                </div>
-                                                                            )}
+                                                            {rating.breakdown.fail > 0 && (
+                                                                <div
+                                                                    className="bg-red-500 flex items-center justify-center text-xs text-white font-medium"
+                                                                    style={{ width: `${rating.breakdown.failPercentage}%` }}
+                                                                >
+                                                                    {rating.breakdown.fail > 0 && rating.breakdown.failPercentage >= 15 && (
+                                                                        <span>{rating.breakdown.fail} ({rating.breakdown.failPercentage}%)</span>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                                         </div>
                                                                     </div>
                                                                 ) : (
@@ -426,11 +415,7 @@ export function TasksTab({ data }: TasksTabProps) {
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <div className="h-3 w-3 rounded bg-red-500"></div>
-                                            <span>Direct Fail</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <div className="h-3 w-3 rounded bg-red-300"></div>
-                                            <span>Indirect Fail</span>
+                                            <span>Fail</span>
                                         </div>
                                     </div>
                                 </div>
@@ -484,13 +469,8 @@ function ParticipantPathsCard({ participants, taskId, totalParticipants }: { par
                     resultColor = "bg-green-300";
                 }
             } else {
-                if (result.directPathTaken) {
-                    resultType = "Direct Fail";
-                    resultColor = "bg-red-600";
-                } else {
-                    resultType = "Indirect Fail";
-                    resultColor = "bg-red-300";
-                }
+                resultType = "Fail";
+                resultColor = "bg-red-600";
             }
 
             const key = path + "||" + resultType;
@@ -540,8 +520,7 @@ function ParticipantPathsCard({ participants, taskId, totalParticipants }: { par
                         <option value="all">All Results</option>
                         <option value="Direct Success">Direct Success</option>
                         <option value="Indirect Success">Indirect Success</option>
-                        <option value="Direct Fail">Direct Fail</option>
-                        <option value="Indirect Fail">Indirect Fail</option>
+                        <option value="Fail">Fail</option>
                         <option value="Direct Skip">Direct Skip</option>
                         <option value="Indirect Skip">Indirect Skip</option>
                     </select>

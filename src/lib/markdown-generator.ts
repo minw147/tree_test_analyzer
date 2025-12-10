@@ -172,8 +172,7 @@ ${generateParentNodeSection(task)}
 |---------|-------|------------|
 | Direct Success | ${task.stats.breakdown.directSuccess} | ${calculatePercentage(task.stats.breakdown.directSuccess, task.stats.breakdown.total)}% |
 | Indirect Success | ${task.stats.breakdown.indirectSuccess} | ${calculatePercentage(task.stats.breakdown.indirectSuccess, task.stats.breakdown.total)}% |
-| Direct Fail | ${task.stats.breakdown.directFail} | ${calculatePercentage(task.stats.breakdown.directFail, task.stats.breakdown.total)}% |
-| Indirect Fail | ${task.stats.breakdown.indirectFail} | ${calculatePercentage(task.stats.breakdown.indirectFail, task.stats.breakdown.total)}% |
+| Fail | ${task.stats.breakdown.fail} | ${calculatePercentage(task.stats.breakdown.fail, task.stats.breakdown.total)}% |
 | Skip | ${task.stats.breakdown.directSkip + task.stats.breakdown.indirectSkip} | ${calculatePercentage(task.stats.breakdown.directSkip + task.stats.breakdown.indirectSkip, task.stats.breakdown.total)}% |
 
 ---
@@ -216,8 +215,8 @@ ${generateIncorrectDestinations(task)}
 
 ### Confidence Ratings
 
-| Rating | Direct Success | Indirect Success | Direct Fail | Indirect Fail | Skip | Total |
-|--------|---------------|------------------|-------------|---------------|------|-------|
+| Rating | Direct Success | Indirect Success | Fail | Skip | Total |
+|--------|---------------|------------------|------|------|-------|
 ${generateConfidenceRatings(task)}`;
 }
 
@@ -239,7 +238,7 @@ function generateParticipantPaths(task: TaskStats, participants: Participant[]):
             if (result.successful) {
                 resultType = result.directPathTaken ? "Direct Success" : "Indirect Success";
             } else {
-                resultType = result.directPathTaken ? "Direct Fail" : "Indirect Fail";
+                resultType = "Fail";
             }
         } else {
              // Differentiate direct/indirect skip if needed, or just "Skip"
@@ -357,7 +356,7 @@ function generateConfidenceRatings(task: TaskStats): string {
     return ratings.map(r => {
         const label = ratingLabels[r.value] || r.value.toString();
         const b = r.breakdown;
-        return `| ${label} | ${b.directSuccess} (${b.directSuccessPercentage}%) | ${b.indirectSuccess} (${b.indirectSuccessPercentage}%) | ${b.directFail} (${b.directFailPercentage}%) | ${b.indirectFail} (${b.indirectFailPercentage}%) | ${b.directSkip + b.indirectSkip} (${b.directSkipPercentage + b.indirectSkipPercentage}%) | ${r.count} |`;
+        return `| ${label} | ${b.directSuccess} (${b.directSuccessPercentage}%) | ${b.indirectSuccess} (${b.indirectSuccessPercentage}%) | ${b.fail} (${b.failPercentage}%) | ${b.directSkip + b.indirectSkip} (${b.directSkipPercentage + b.indirectSkipPercentage}%) | ${r.count} |`;
     }).join('\n');
 }
 

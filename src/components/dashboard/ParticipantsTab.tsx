@@ -104,18 +104,10 @@ export function ParticipantsTab({ data }: ParticipantsTabProps) {
                 </div>
             );
         }
-        if (!result.successful && result.directPathTaken) {
-            return (
-                <div className="flex items-center gap-1 text-red-600">
-                    <XCircle className="h-4 w-4" />
-                    <span className="text-xs font-medium">Direct Fail</span>
-                </div>
-            );
-        }
         return (
-            <div className="flex items-center gap-1 text-red-500">
+            <div className="flex items-center gap-1 text-red-600">
                 <XCircle className="h-4 w-4" />
-                <span className="text-xs font-medium">Indirect Fail</span>
+                <span className="text-xs font-medium">Fail</span>
             </div>
         );
     };

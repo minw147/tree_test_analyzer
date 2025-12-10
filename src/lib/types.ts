@@ -59,8 +59,7 @@ export interface TaskStats {
         breakdown: {
             directSuccess: number;
             indirectSuccess: number;
-            directFail: number;
-            indirectFail: number;
+            fail: number;
             directSkip: number;
             indirectSkip: number;
             total: number;
@@ -85,10 +84,8 @@ export interface TaskStats {
                 directSuccessPercentage: number;
                 indirectSuccess: number;
                 indirectSuccessPercentage: number;
-                directFail: number;
-                directFailPercentage: number;
-                indirectFail: number;
-                indirectFailPercentage: number;
+                fail: number;
+                failPercentage: number;
                 directSkip: number;
                 directSkipPercentage: number;
                 indirectSkip: number;

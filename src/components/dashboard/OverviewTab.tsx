@@ -22,8 +22,7 @@ export function OverviewTab({ data }: OverviewTabProps) {
             const taskResults = {
                 directSuccess: 0,
                 indirectSuccess: 0,
-                directFail: 0,
-                indirectFail: 0,
+                fail: 0,
                 directSkip: 0,
                 indirectSkip: 0,
             };
@@ -38,14 +37,13 @@ export function OverviewTab({ data }: OverviewTabProps) {
                         if (result.directPathTaken) taskResults.directSuccess++;
                         else taskResults.indirectSuccess++;
                     } else {
-                        if (result.directPathTaken) taskResults.directFail++;
-                        else taskResults.indirectFail++;
+                        taskResults.fail++;
                     }
                 }
             });
 
             const total = taskResults.directSuccess + taskResults.indirectSuccess +
-                taskResults.directFail + taskResults.indirectFail +
+                taskResults.fail +
                 taskResults.directSkip + taskResults.indirectSkip;
 
             const getPct = (val: number) => total > 0 ? (val / total) * 100 : 0;
@@ -57,10 +55,8 @@ export function OverviewTab({ data }: OverviewTabProps) {
                 "Direct Success_count": taskResults.directSuccess,
                 "Indirect Success": getPct(taskResults.indirectSuccess),
                 "Indirect Success_count": taskResults.indirectSuccess,
-                "Direct Fail": getPct(taskResults.directFail),
-                "Direct Fail_count": taskResults.directFail,
-                "Indirect Fail": getPct(taskResults.indirectFail),
-                "Indirect Fail_count": taskResults.indirectFail,
+                "Fail": getPct(taskResults.fail),
+                "Fail_count": taskResults.fail,
                 "Direct Skip": getPct(taskResults.directSkip),
                 "Direct Skip_count": taskResults.directSkip,
                 "Indirect Skip": getPct(taskResults.indirectSkip),
@@ -79,8 +75,7 @@ export function OverviewTab({ data }: OverviewTabProps) {
         const items = [
             { value: 'Direct Success', color: '#22c55e' },
             { value: 'Indirect Success', color: '#86efac' },
-            { value: 'Direct Fail', color: '#ef4444' },
-            { value: 'Indirect Fail', color: '#fca5a5' },
+            { value: 'Fail', color: '#ef4444' },
             { value: 'Direct Skip', color: '#64748b' },
             { value: 'Indirect Skip', color: '#cbd5e1' }
         ];
@@ -195,8 +190,7 @@ export function OverviewTab({ data }: OverviewTabProps) {
                                 <Legend content={renderLegend} />
                                 <Bar dataKey="Direct Success" stackId="a" fill="#22c55e" />
                                 <Bar dataKey="Indirect Success" stackId="a" fill="#86efac" />
-                                <Bar dataKey="Direct Fail" stackId="a" fill="#ef4444" />
-                                <Bar dataKey="Indirect Fail" stackId="a" fill="#fca5a5" />
+                                <Bar dataKey="Fail" stackId="a" fill="#ef4444" />
                                 <Bar dataKey="Direct Skip" stackId="a" fill="#64748b" />
                                 <Bar dataKey="Indirect Skip" stackId="a" fill="#cbd5e1" />
                             </BarChart>

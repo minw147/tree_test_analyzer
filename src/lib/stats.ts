@@ -1,6 +1,6 @@
 import type { Item, ParentClickStats, TaskStats, TreeTestOverviewStats, UploadedData } from "./types";
 import { calculateParentNodeStats } from "./stats/parent-node-stats";
-import { normalizePath, parsePath } from "./stats/path-utils";
+import { parsePath } from "./stats/path-utils";
 
 function computeStatistics(values: number[]): { median: number; min: number; max: number; q1: number; q3: number } {
     if (values.length === 0) {
@@ -88,11 +88,6 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
             .map(a => a.trim())
             .filter(a => a.length > 0);
 
-        // Normalize expected answers (used for incorrect destination checks)
-        const normalizedExpectedPaths = expectedAnswers
-            .map(path => normalizePath(path).toLowerCase())
-            .filter(p => p.length > 0);
-
         // Calculate parent node stats (safe - wrapped in try-catch)
         let parentNodeStats;
         try {
@@ -113,7 +108,7 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
                     time: { median: 0, min: 0, max: 0, q1: 0, q3: 0 },
                     score: 0,
                     breakdown: {
-                        directSuccess: 0, indirectSuccess: 0, directFail: 0, indirectFail: 0,
+                        directSuccess: 0, indirectSuccess: 0, fail: 0,
                         directSkip: 0, indirectSkip: 0, total: 0
                     },
                     parentClicks: [],
@@ -180,8 +175,7 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         const breakdown = {
             directSuccess: taskResults.filter(r => r.successful && r.directPathTaken && !r.skipped).length,
             indirectSuccess: taskResults.filter(r => r.successful && !r.directPathTaken && !r.skipped).length,
-            directFail: taskResults.filter(r => !r.successful && r.directPathTaken && !r.skipped).length,
-            indirectFail: taskResults.filter(r => !r.successful && !r.directPathTaken && !r.skipped).length,
+            fail: taskResults.filter(r => !r.successful && !r.skipped).length,
             directSkip: taskResults.filter(r => r.skipped && r.directPathTaken).length,
             indirectSkip: taskResults.filter(r => r.skipped && !r.directPathTaken).length,
             total: totalCount,
@@ -289,49 +283,23 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
                 : 0;
         });
 
-        // Incorrect Destinations
-        // Determine incorrectness based on path matching, not the stored successful flag
-        const incorrectResults = taskResults.filter(r => {
-            if (r.skipped) return false; // Skip skipped participants
-            
-            // Normalize participant path
-            const normalizedParticipantPath = normalizePath(r.pathTaken).toLowerCase();
-            
-            // Check if path matches any expected destination (exact or ends with)
-            const exactMatchIndex = normalizedExpectedPaths.indexOf(normalizedParticipantPath);
-            if (exactMatchIndex !== -1) {
-                return false; // Matches expected path, not incorrect
-            }
-            
-            // Check if path ends with any expected destination
-            for (let i = 0; i < normalizedExpectedPaths.length; i++) {
-                const normalizedExpected = normalizedExpectedPaths[i];
-                if (normalizedParticipantPath.endsWith(normalizedExpected)) {
-                    return false; // Ends with expected destination, not incorrect
-                }
-            }
-            
-            return true; // Doesn't match any expected path, it's incorrect
-        });
-        
-        // Group incorrect destinations by final destination node
-        // Track shortest path for each destination and count all paths ending there
+        // Incorrect Destinations (derived from participant paths)
+        // Start from participant task results (same as Participant Paths view)
+        // Filter: non-skipped AND failed (direct or indirect)
+        const failedResults = taskResults.filter(r => !r.skipped && !r.successful);
+
+        // Group by final destination, keep shortest path
         const incorrectDestinationsMap = new Map<string, { count: number; shortestPath: string }>();
-        incorrectResults.forEach(r => {
-            // Parse path and get the final destination (last node)
+        failedResults.forEach(r => {
             const parsedPath = parsePath(r.pathTaken);
-            const finalDestination = parsedPath.length > 0 ? parsedPath[parsedPath.length - 1] : r.pathTaken;
-            
-            // Normalize the path for length comparison (handle different separators)
-            const normalizedPath = normalizePath(r.pathTaken);
-            const pathLength = normalizedPath.split('|').filter(Boolean).length;
-            
+            if (parsedPath.length === 0) return;
+            const finalDestination = parsedPath[parsedPath.length - 1].toLowerCase();
+            const pathLength = parsedPath.length;
+
             if (incorrectDestinationsMap.has(finalDestination)) {
                 const existing = incorrectDestinationsMap.get(finalDestination)!;
                 existing.count += 1;
-                // Update shortest path if this path is shorter
-                const existingNormalized = normalizePath(existing.shortestPath);
-                const existingLength = existingNormalized.split('|').filter(Boolean).length;
+                const existingLength = parsePath(existing.shortestPath).length;
                 if (pathLength < existingLength) {
                     existing.shortestPath = r.pathTaken;
                 }
@@ -343,14 +311,14 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
             }
         });
 
-        const totalIncorrect = incorrectResults.length;
+        const totalIncorrect = failedResults.length;
         const incorrectDestinations = Array.from(incorrectDestinationsMap.values())
             .map((data) => ({
-                path: data.shortestPath, // Show shortest path to this destination
-                count: data.count, // Count all paths ending at this destination
+                path: data.shortestPath, // shortest observed path to this destination
+                count: data.count,
                 percentage: totalIncorrect ? Math.round((data.count / totalIncorrect) * 100) : 0,
             }))
-            .sort((a, b) => b.count - a.count); // Sort by count descending
+            .sort((a, b) => b.count - a.count);
 
         // Confidence Ratings
         const confidenceValuesMap = new Map<number, any>();
@@ -358,7 +326,7 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         // Initialize all 7 confidence levels (1-7)
         for (let i = 1; i <= 7; i++) {
             confidenceValuesMap.set(i, {
-                count: 0, directSuccess: 0, indirectSuccess: 0, directFail: 0, indirectFail: 0, directSkip: 0, indirectSkip: 0
+                count: 0, directSuccess: 0, indirectSuccess: 0, fail: 0, directSkip: 0, indirectSkip: 0
             });
         }
 
@@ -372,7 +340,7 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
                     if (r.successful) {
                         if (r.directPathTaken) stats.directSuccess++; else stats.indirectSuccess++;
                     } else {
-                        if (r.directPathTaken) stats.directFail++; else stats.indirectFail++;
+                        stats.fail++;
                     }
                 }
             }
@@ -390,10 +358,8 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
                     directSuccessPercentage: stats.count ? Math.round((stats.directSuccess / stats.count) * 100) : 0,
                     indirectSuccess: stats.indirectSuccess,
                     indirectSuccessPercentage: stats.count ? Math.round((stats.indirectSuccess / stats.count) * 100) : 0,
-                    directFail: stats.directFail,
-                    directFailPercentage: stats.count ? Math.round((stats.directFail / stats.count) * 100) : 0,
-                    indirectFail: stats.indirectFail,
-                    indirectFailPercentage: stats.count ? Math.round((stats.indirectFail / stats.count) * 100) : 0,
+                    fail: stats.fail,
+                    failPercentage: stats.count ? Math.round((stats.fail / stats.count) * 100) : 0,
                     directSkip: stats.directSkip,
                     directSkipPercentage: stats.count ? Math.round((stats.directSkip / stats.count) * 100) : 0,
                     indirectSkip: stats.indirectSkip,
