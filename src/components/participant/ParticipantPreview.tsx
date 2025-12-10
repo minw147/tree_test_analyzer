@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ChevronRight, ChevronDown, Folder, File, Home, Check, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { StudyConfig, TreeNode } from "@/lib/types/study";
+import type { StudyConfig, TreeNode, Task } from "@/lib/types/study";
 import type { Item } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { sanitizeTreeTestLink } from "@/lib/utils";
 
 interface ParticipantPreviewProps {
     study: StudyConfig;
+    shuffledTasks?: Task[] | null; // Shuffled tasks if randomization is enabled
     // Optional callbacks for data tracking (used in actual participant view)
     onTestStart?: (taskIndex: number) => void;
     onNodeClick?: (taskIndex: number, path: string) => void;
@@ -33,6 +34,7 @@ type TestPhase = "welcome" | "instructions" | "task" | "completed";
 
 export function ParticipantPreview({ 
     study, 
+    shuffledTasks,
     onTestStart,
     onNodeClick,
     onTaskComplete,
@@ -49,9 +51,12 @@ export function ParticipantPreview({
     const [confidence, setConfidence] = useState<number | undefined>(undefined);
     const [taskResults, setTaskResults] = useState<Array<{ taskIndex: number; selectedPath: string; confidence?: number }>>([]);
 
+    // Use shuffled tasks if provided, otherwise use original tasks
+    const tasksToUse = shuffledTasks || study.tasks;
+    
     const items = convertTreeNodesToItems(study.tree);
-    const currentTask = study.tasks[currentTaskIndex];
-    const isLastTask = currentTaskIndex === study.tasks.length - 1;
+    const currentTask = tasksToUse[currentTaskIndex];
+    const isLastTask = currentTaskIndex === tasksToUse.length - 1;
 
     const buildPath = (parentPath: string, nodeName: string): string => {
         return parentPath ? `${parentPath}/${nodeName}` : `/${nodeName}`;
@@ -229,7 +234,7 @@ export function ParticipantPreview({
         if (phase === "welcome") {
             setPhase("instructions");
         } else if (phase === "instructions") {
-            if (study.tasks.length > 0) {
+            if (tasksToUse.length > 0) {
                 setPhase("task");
             } else {
                 setPhase("completed");
@@ -390,7 +395,7 @@ export function ParticipantPreview({
                             <div className="flex items-center justify-between border-b pb-4">
                                 <div>
                                     <h2 className="text-xl font-semibold text-gray-900">
-                                        {study.settings.customText?.taskProgress || "Task"} {currentTaskIndex + 1} of {study.tasks.length}
+                                        {study.settings.customText?.taskProgress || "Task"} {currentTaskIndex + 1} of {tasksToUse.length}
                                     </h2>
                                     <p className="text-lg font-bold text-gray-900 mt-2">{currentTask.description}</p>
                                 </div>

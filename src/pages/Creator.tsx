@@ -393,7 +393,9 @@ export function Creator() {
                                 <TaskEditor
                                     tasks={study.tasks}
                                     tree={study.tree}
+                                    settings={study.settings}
                                     onChange={(tasks) => setStudy({ ...study, tasks, updatedAt: new Date().toISOString() })}
+                                    onSettingsChange={(settings) => setStudy({ ...study, settings, updatedAt: new Date().toISOString() })}
                                 />
                             </div>
                         )}

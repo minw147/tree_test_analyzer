@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 import { Plus, Trash2, ArrowUp, ArrowDown, ListPlus } from "lucide-react";
-import type { Task, TreeNode } from "@/lib/types/study";
+import type { Task, TreeNode, StudySettings } from "@/lib/types/study";
 import type { Item } from "@/lib/types";
 import { generateId } from "@/lib/utils/id-generator";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TreePathSelector } from "@/components/ui/tree-path-selector";
+import { TaskRandomizationSettings } from "./TaskRandomizationSettings";
 
 interface TaskEditorProps {
     tasks: Task[];
     tree: TreeNode[]; // Tree structure for path selection
+    settings: StudySettings; // Need settings for randomization
     onChange: (tasks: Task[]) => void;
+    onSettingsChange: (settings: StudySettings) => void;
 }
 
 // Convert TreeNode[] to Item[] for TreePathSelector
@@ -24,7 +27,7 @@ const convertTreeNodesToItems = (nodes: TreeNode[]): Item[] => {
     }));
 };
 
-export function TaskEditor({ tasks, tree, onChange }: TaskEditorProps) {
+export function TaskEditor({ tasks, tree, settings, onChange, onSettingsChange }: TaskEditorProps) {
     const bulkAddTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Convert tree structure for path selector
@@ -148,6 +151,13 @@ export function TaskEditor({ tasks, tree, onChange }: TaskEditorProps) {
                     </PopoverContent>
                 </Popover>
             </div>
+
+            {/* Task Randomization Toggle */}
+            <TaskRandomizationSettings
+                randomizeTasks={settings.randomizeTasks ?? false}
+                taskCount={tasks.length}
+                onChange={(randomizeTasks) => onSettingsChange({ ...settings, randomizeTasks })}
+            />
 
             {tasks.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded border-2 border-dashed border-gray-300">
