@@ -121,15 +121,22 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
             };
         }
 
-        // Calculate path distribution (DO NOT modify success status - use original data)
-        const pathCounts = new Map<string, number>();
-        expectedAnswers.forEach(path => pathCounts.set(path, 0));
-
+        // Calculate path distribution
+        // Group by final destination node (like incorrect destinations)
+        // Track shortest path for each destination and count all paths ending there
+        const pathDistributionMap = new Map<string, { count: number; shortestPath: string }>();
+        
         // Use original task results without modifying success status
         const taskResults = rawTaskResults;
 
         // Normalize expected answers to consistent format for comparison
         const normalizedExpectedPaths = expectedAnswers.map(path => normalizePath(path).toLowerCase());
+        
+        // Extract final destination nodes from expected paths
+        const expectedFinalDestinations = expectedAnswers.map(path => {
+            const parsed = parsePath(path);
+            return parsed.length > 0 ? parsed[parsed.length - 1].toLowerCase() : null;
+        }).filter(Boolean) as string[];
 
         // Count paths for path distribution
         // Count ANY participant who reached an expected destination (determines success independently)
@@ -139,23 +146,46 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
             // Normalize participant path to same format as expected paths
             const normalizedParticipantPath = normalizePath(r.pathTaken).toLowerCase();
             
+            // Find which expected destination this participant reached
+            let matchedFinalDestination: string | null = null;
+            
             // First try exact match (for direct paths)
             const exactMatchIndex = normalizedExpectedPaths.indexOf(normalizedParticipantPath);
             if (exactMatchIndex !== -1) {
-                const originalPath = expectedAnswers[exactMatchIndex];
-                pathCounts.set(originalPath, (pathCounts.get(originalPath) || 0) + 1);
+                matchedFinalDestination = expectedFinalDestinations[exactMatchIndex];
             } else {
                 // For indirect paths (with backtracking), find which expected destination they reached
                 // Check if the path ends with any of the expected paths
-                for (let i = 0; i < expectedAnswers.length; i++) {
-                    const expectedPath = expectedAnswers[i];
+                for (let i = 0; i < normalizedExpectedPaths.length; i++) {
                     const normalizedExpected = normalizedExpectedPaths[i];
                     
                     // Check if the participant's path ends with the expected destination
                     if (normalizedParticipantPath.endsWith(normalizedExpected)) {
-                        pathCounts.set(expectedPath, (pathCounts.get(expectedPath) || 0) + 1);
+                        matchedFinalDestination = expectedFinalDestinations[i];
                         break; // Count once per participant
                     }
+                }
+            }
+            
+            // If participant reached an expected destination, count it
+            if (matchedFinalDestination) {
+                const normalizedPath = normalizePath(r.pathTaken);
+                const pathLength = normalizedPath.split('|').filter(Boolean).length;
+                
+                if (pathDistributionMap.has(matchedFinalDestination)) {
+                    const existing = pathDistributionMap.get(matchedFinalDestination)!;
+                    existing.count += 1;
+                    // Update shortest path if this path is shorter
+                    const existingNormalized = normalizePath(existing.shortestPath);
+                    const existingLength = existingNormalized.split('|').filter(Boolean).length;
+                    if (pathLength < existingLength) {
+                        existing.shortestPath = r.pathTaken;
+                    }
+                } else {
+                    pathDistributionMap.set(matchedFinalDestination, {
+                        count: 1,
+                        shortestPath: r.pathTaken
+                    });
                 }
             }
         });
@@ -189,15 +219,21 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         const score = Math.round(successRate * 0.7 + directnessRate * 0.3);
 
         // Path Distribution Stats
-        // Calculate total of all paths that matched (may differ from successCount if successful flag was set differently)
-        const totalMatchedPaths = Array.from(pathCounts.values()).reduce((sum, count) => sum + count, 0);
-        const pathDistribution = Array.from(pathCounts.entries())
-            .map(([path, count]) => ({
-                path,
-                count,
-                percentage: totalMatchedPaths > 0 ? Math.round((count / totalMatchedPaths) * 100) : 0
+        // Calculate total successful paths (direct + indirect success) for percentage denominator
+        const totalSuccessfulPaths = breakdown.directSuccess + breakdown.indirectSuccess;
+        // Alternative: total paths ending at correct destinations (from our map)
+        const totalMatchedPaths = Array.from(pathDistributionMap.values()).reduce((sum, data) => sum + data.count, 0);
+        
+        // Use totalMatchedPaths if available (more accurate), otherwise fall back to breakdown
+        const denominator = totalMatchedPaths > 0 ? totalMatchedPaths : totalSuccessfulPaths;
+        
+        const pathDistribution = Array.from(pathDistributionMap.values())
+            .map((data) => ({
+                path: data.shortestPath, // Show shortest path to this destination
+                count: data.count, // Count all paths ending at this destination
+                percentage: denominator > 0 ? Math.round((data.count / denominator) * 100) : 0
             }))
-            .sort((a, b) => b.count - a.count);
+            .sort((a, b) => b.count - a.count); // Sort by count descending
 
         // Parent Clicks Analysis
         const nonSkippedResults = taskResults.filter(r => !r.skipped);
