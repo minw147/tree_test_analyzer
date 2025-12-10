@@ -121,30 +121,41 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
             };
         }
 
-        // Calculate path distribution and update success status based on expected answers
+        // Calculate path distribution (DO NOT modify success status - use original data)
         const pathCounts = new Map<string, number>();
         expectedAnswers.forEach(path => pathCounts.set(path, 0));
 
-        const taskResults = rawTaskResults.map(r => {
+        // Use original task results without modifying success status
+        const taskResults = rawTaskResults;
+
+        // Count paths for path distribution
+        // For successful participants, determine which expected path they took
+        taskResults.forEach(r => {
+            if (!r.successful) return; // Only count successful participants
+            
             const normalizedPath = r.pathTaken.toLowerCase();
-
-            // Strict match is better for tree testing usually
-            const isCorrect = normalizedExpectedAnswers.includes(normalizedPath);
-
-            if (isCorrect) {
+            
+            // First try exact match (for direct paths)
+            if (normalizedExpectedAnswers.includes(normalizedPath)) {
                 const matchedIndex = normalizedExpectedAnswers.indexOf(normalizedPath);
                 if (matchedIndex !== -1) {
                     const originalPath = expectedAnswers[matchedIndex];
                     pathCounts.set(originalPath, (pathCounts.get(originalPath) || 0) + 1);
                 }
-
-                // If not already successful, mark as successful
-                // We preserve directness from the original result if possible
-                if (!r.successful) {
-                    return { ...r, successful: true };
+            } else {
+                // For indirect paths (with backtracking), find which expected destination they reached
+                // Check if the path ends with any of the expected paths
+                for (let i = 0; i < expectedAnswers.length; i++) {
+                    const expectedPath = expectedAnswers[i];
+                    const normalizedExpected = normalizedExpectedAnswers[i];
+                    
+                    // Check if the participant's path ends with the expected destination
+                    if (normalizedPath.endsWith(normalizedExpected)) {
+                        pathCounts.set(expectedPath, (pathCounts.get(expectedPath) || 0) + 1);
+                        break; // Count once per participant
+                    }
                 }
             }
-            return r;
         });
 
         const totalCount = taskResults.length;
@@ -180,7 +191,7 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
             .map(([path, count]) => ({
                 path,
                 count,
-                percentage: totalCount > 0 ? Math.round((count / totalCount) * 100) : 0
+                percentage: successCount > 0 ? Math.round((count / successCount) * 100) : 0
             }))
             .sort((a, b) => b.count - a.count);
 
@@ -243,9 +254,20 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
             }
 
             // Increment total clicks for all parents in the path
-            allParentNames.forEach(parentPath => {
-                if (r.pathTaken.includes(parentPath.split("/").filter(Boolean).pop() || "")) {
-                    const stats = parentClickStats.get(parentPath);
+            // Properly iterate through each node in the participant's path
+            pathParts.forEach((part, index) => {
+                let currentPath = "";
+                if (hasOnlyHomeRoot && index > 0) {
+                    // For single-root trees, format as /Home/NodeName
+                    currentPath = `/${homeRoot}/${part}`;
+                } else if (index === 0 && !hasOnlyHomeRoot) {
+                    // For multi-root trees, format as /NodeName
+                    currentPath = `/${part}`;
+                }
+                
+                // Increment count if this is a tracked parent node
+                if (currentPath && parentClickStats.has(currentPath)) {
+                    const stats = parentClickStats.get(currentPath);
                     if (stats) {
                         stats.totalClickCount++;
                     }
@@ -287,16 +309,14 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
             });
         }
 
-        // Count actual responses
+        // Count actual responses (skip confidence ratings are excluded since participants don't see the question when they skip)
         taskResults.forEach(r => {
-            if (r.confidenceRating !== null && r.confidenceRating >= 1 && r.confidenceRating <= 7) {
+            if (!r.skipped && r.confidenceRating !== null && r.confidenceRating >= 1 && r.confidenceRating <= 7) {
                 const value = r.confidenceRating;
                 const stats = confidenceValuesMap.get(value);
                 if (stats) {
                     stats.count++;
-                    if (r.skipped) {
-                        if (r.directPathTaken) stats.directSkip++; else stats.indirectSkip++;
-                    } else if (r.successful) {
+                    if (r.successful) {
                         if (r.directPathTaken) stats.directSuccess++; else stats.indirectSuccess++;
                     } else {
                         if (r.directPathTaken) stats.directFail++; else stats.indirectFail++;

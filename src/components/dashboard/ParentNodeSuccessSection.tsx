@@ -17,7 +17,11 @@ export function ParentNodeSuccessSection({ task }: ParentNodeSuccessSectionProps
   }
 
   const { level1, level2, level3 } = task.stats.parentNodeStats;
-  const expectedPath = task.expectedAnswer.split(',')[0]?.trim() || '';
+  // Split by comma and handle various formats (comma, comma+space, etc.)
+  const expectedAnswers = task.expectedAnswer
+    .split(',')
+    .map(a => a.trim())
+    .filter(a => a.length > 0);
 
   // Calculate margin of error for each level
   const getMargin = (rate: number, total: number) => {
@@ -26,30 +30,42 @@ export function ParentNodeSuccessSection({ task }: ParentNodeSuccessSectionProps
       : 0;
   };
 
+  // Helper to get expected paths up to level, handling multiple paths
+  // Returns an array of unique path strings (deduplicated)
+  const getExpectedPathsUpToLevel = (level: number): string[] => {
+    if (expectedAnswers.length === 0) return [];
+    
+    // For each expected path, get the path up to the specified level
+    const paths = expectedAnswers.map(path => getPathUpToLevel(path, level)).filter(p => p.length > 0);
+    
+    // Return unique paths only (if all paths are the same, only show one)
+    return Array.from(new Set(paths));
+  };
+
   const rows = [
     {
       level: 1,
       label: "1st Level",
       stats: level1,
-      expectedPath: getPathUpToLevel(expectedPath, 1),
+      expectedPaths: getExpectedPathsUpToLevel(1),
     },
     level2 ? {
       level: 2,
       label: "2nd Level",
       stats: level2,
-      expectedPath: getPathUpToLevel(expectedPath, 2),
+      expectedPaths: getExpectedPathsUpToLevel(2),
     } : null,
     level3 ? {
       level: 3,
       label: "3rd Level",
       stats: level3,
-      expectedPath: getPathUpToLevel(expectedPath, 3),
+      expectedPaths: getExpectedPathsUpToLevel(3),
     } : null,
   ].filter(Boolean) as Array<{
     level: number;
     label: string;
     stats: { rate: number; count: number; total: number; nodeName: string };
-    expectedPath: string;
+    expectedPaths: string[];
   }>;
 
   if (rows.length === 0) {
@@ -101,7 +117,15 @@ export function ParentNodeSuccessSection({ task }: ParentNodeSuccessSectionProps
                         {row.label}
                       </td>
                       <td className="px-4 py-3 text-gray-600 font-mono text-xs">
-                        {row.expectedPath || 'N/A'}
+                        {row.expectedPaths.length > 0 ? (
+                          <div className="space-y-1">
+                            {row.expectedPaths.map((path, idx) => (
+                              <div key={idx}>{path}</div>
+                            ))}
+                          </div>
+                        ) : (
+                          'N/A'
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={`font-bold ${getMetricColor(row.stats.rate)}`}>
