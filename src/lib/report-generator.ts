@@ -16,8 +16,7 @@ export function generateHtmlReport(data: UploadedData): string {
     const taskResults = {
       directSuccess: 0,
       indirectSuccess: 0,
-      directFail: 0,
-      indirectFail: 0,
+      fail: 0,
       directSkip: 0,
       indirectSkip: 0,
     };
@@ -32,14 +31,13 @@ export function generateHtmlReport(data: UploadedData): string {
           if (result.directPathTaken) taskResults.directSuccess++;
           else taskResults.indirectSuccess++;
         } else {
-          if (result.directPathTaken) taskResults.directFail++;
-          else taskResults.indirectFail++;
+          taskResults.fail++;
         }
       }
     });
 
     const total = taskResults.directSuccess + taskResults.indirectSuccess +
-      taskResults.directFail + taskResults.indirectFail +
+      taskResults.fail +
       taskResults.directSkip + taskResults.indirectSkip;
 
     const getPct = (val: number) => total > 0 ? (val / total) * 100 : 0;
@@ -51,10 +49,8 @@ export function generateHtmlReport(data: UploadedData): string {
       "Direct Success_count": taskResults.directSuccess,
       "Indirect Success": getPct(taskResults.indirectSuccess),
       "Indirect Success_count": taskResults.indirectSuccess,
-      "Direct Fail": getPct(taskResults.directFail),
-      "Direct Fail_count": taskResults.directFail,
-      "Indirect Fail": getPct(taskResults.indirectFail),
-      "Indirect Fail_count": taskResults.indirectFail,
+      "Fail": getPct(taskResults.fail),
+      "Fail_count": taskResults.fail,
       "Direct Skip": getPct(taskResults.directSkip),
       "Direct Skip_count": taskResults.directSkip,
       "Indirect Skip": getPct(taskResults.indirectSkip),
@@ -132,8 +128,7 @@ export function generateHtmlReport(data: UploadedData): string {
       const categories = [
         { key: 'Direct Success', color: '#22c55e', count: task['Direct Success_count'] },
         { key: 'Indirect Success', color: '#86efac', count: task['Indirect Success_count'] },
-        { key: 'Direct Fail', color: '#ef4444', count: task['Direct Fail_count'] },
-        { key: 'Indirect Fail', color: '#fca5a5', count: task['Indirect Fail_count'] },
+        { key: 'Fail', color: '#ef4444', count: task['Fail_count'] },
         { key: 'Direct Skip', color: '#64748b', count: task['Direct Skip_count'] },
         { key: 'Indirect Skip', color: '#cbd5e1', count: task['Indirect Skip_count'] },
       ];
@@ -508,8 +503,7 @@ export function generateHtmlReport(data: UploadedData): string {
         <div class="legend">
           <div class="legend-item"><div class="legend-color" style="background: #22c55e;"></div><span>Direct Success</span></div>
           <div class="legend-item"><div class="legend-color" style="background: #86efac;"></div><span>Indirect Success</span></div>
-          <div class="legend-item"><div class="legend-color" style="background: #ef4444;"></div><span>Direct Fail</span></div>
-          <div class="legend-item"><div class="legend-color" style="background: #fca5a5;"></div><span>Indirect Fail</span></div>
+          <div class="legend-item"><div class="legend-color" style="background: #ef4444;"></div><span>Fail</span></div>
           <div class="legend-item"><div class="legend-color" style="background: #64748b;"></div><span>Direct Skip</span></div>
           <div class="legend-item"><div class="legend-color" style="background: #cbd5e1;"></div><span>Indirect Skip</span></div>
         </div>
@@ -527,8 +521,7 @@ export function generateHtmlReport(data: UploadedData): string {
         const pieData = [
           { name: "Direct Success", value: task.stats.breakdown.directSuccess, color: "bg-green-500" },
           { name: "Indirect Success", value: task.stats.breakdown.indirectSuccess, color: "bg-green-300" },
-          { name: "Direct Fail", value: task.stats.breakdown.directFail, color: "bg-red-500" },
-          { name: "Indirect Fail", value: task.stats.breakdown.indirectFail, color: "bg-red-300" },
+          { name: "Fail", value: task.stats.breakdown.fail, color: "bg-red-500" },
           { name: "Skip", value: task.stats.breakdown.directSkip + task.stats.breakdown.indirectSkip, color: "bg-gray-500" },
         ].filter((d) => d.value > 0);
 
@@ -547,8 +540,8 @@ export function generateHtmlReport(data: UploadedData): string {
             resultType = result.directPathTaken ? "Direct Success" : "Indirect Success";
             resultColor = result.directPathTaken ? "#22c55e" : "#86efac";
           } else {
-            resultType = result.directPathTaken ? "Direct Fail" : "Indirect Fail";
-            resultColor = result.directPathTaken ? "#ef4444" : "#fca5a5";
+            resultType = "Fail";
+            resultColor = "#ef4444";
           }
           const key = path + "||" + resultType;
           if (!pathMap.has(key)) {
@@ -676,7 +669,7 @@ export function generateHtmlReport(data: UploadedData): string {
                 <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; text-align: center;">
                   <div style="font-size: 24px; font-weight: 700; color: ${getMetricColorValue(task.stats.directness.rate)}">${task.stats.directness.rate}%</div>
                   <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Directness</div>
-                  <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">${task.stats.breakdown.directSuccess + task.stats.breakdown.directFail} / ${totalParticipants} participants</div>
+                  <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">${task.stats.breakdown.directSuccess} / ${totalParticipants} participants</div>
                   <div style="font-size: 10px; color: #9ca3af;">±${task.stats.directness.margin}%</div>
                 </div>
                 <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; text-align: center;">
@@ -863,14 +856,9 @@ export function generateHtmlReport(data: UploadedData): string {
                               ${rating.breakdown.indirectSuccessPercentage >= 15 ? `${rating.breakdown.indirectSuccess}` : ''}
                             </div>
                             ` : ''}
-                            ${rating.breakdown.directFail > 0 ? `
-                            <div style="background: #ef4444; width: ${rating.breakdown.directFailPercentage}%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600;">
-                              ${rating.breakdown.directFailPercentage >= 15 ? `${rating.breakdown.directFail}` : ''}
-                            </div>
-                            ` : ''}
-                            ${rating.breakdown.indirectFail > 0 ? `
-                            <div style="background: #fca5a5; width: ${rating.breakdown.indirectFailPercentage}%; display: flex; align-items: center; justify-content: center; color: #374151; font-size: 11px; font-weight: 600;">
-                              ${rating.breakdown.indirectFailPercentage >= 15 ? `${rating.breakdown.indirectFail}` : ''}
+                            ${rating.breakdown.fail > 0 ? `
+                            <div style="background: #ef4444; width: ${rating.breakdown.failPercentage}%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600;">
+                              ${rating.breakdown.failPercentage >= 15 ? `${rating.breakdown.fail}` : ''}
                             </div>
                             ` : ''}
                           </div>
@@ -894,11 +882,7 @@ export function generateHtmlReport(data: UploadedData): string {
                 </div>
                 <div style="display: flex; align-items: center; gap: 4px;">
                   <div style="width: 12px; height: 12px; border-radius: 2px; background: #ef4444;"></div>
-                  <span>Direct Fail</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <div style="width: 12px; height: 12px; border-radius: 2px; background: #fca5a5;"></div>
-                  <span>Indirect Fail</span>
+                  <span>Fail</span>
                 </div>
               </div>
             </div>
@@ -960,10 +944,7 @@ export function generateHtmlReport(data: UploadedData): string {
                 if (result.successful && !result.directPathTaken) {
                   return '<span style="font-size: 12px; font-weight: 600; color: #22c55e;">✓ Indirect Success</span>';
                 }
-                if (!result.successful && result.directPathTaken) {
-                  return '<span style="font-size: 12px; font-weight: 600; color: #dc2626;">✗ Direct Fail</span>';
-                }
-                return '<span style="font-size: 12px; font-weight: 600; color: #ef4444;">✗ Indirect Fail</span>';
+                return '<span style="font-size: 12px; font-weight: 600; color: #dc2626;">✗ Fail</span>';
               };
               
               return `
