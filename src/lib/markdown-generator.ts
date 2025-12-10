@@ -165,6 +165,8 @@ ${expectedPaths.split('\n').map((p, i) => `${i + 1}. \`${p}\``).join('\n')}
 | Median Time | ${task.stats.time.median}s | - |
 | Time Range | ${task.stats.time.min}s - ${task.stats.time.max}s | - |
 
+${generateParentNodeSection(task)}
+
 ### Results Breakdown
 | Outcome | Count | Percentage |
 |---------|-------|------------|
@@ -308,6 +310,32 @@ function generateIncorrectDestinations(task: TaskStats): string {
     return task.stats.incorrectDestinations.map(id => {
         return `| \`${id.path}\` | ${id.count} | ${id.percentage}% |`;
     }).join('\n');
+}
+
+function generateParentNodeSection(task: TaskStats): string {
+    if (!task.stats.parentNodeStats) {
+        return ""; // No parent node stats available
+    }
+    
+    const { level1, level2, level3 } = task.stats.parentNodeStats;
+    
+    let rows = `### Parent Node Success Rates\n\n`;
+    rows += `| Level | Node Name | Success Rate | Participants Reached |\n`;
+    rows += `|-------|-----------|--------------|---------------------|\n`;
+    
+    rows += `| Level 1 | ${level1.nodeName} | ${level1.rate.toFixed(1)}% | ${level1.count} / ${level1.total} |\n`;
+    
+    if (level2) {
+        rows += `| Level 2 | ${level2.nodeName} | ${level2.rate.toFixed(1)}% | ${level2.count} / ${level2.total} |\n`;
+    }
+    
+    if (level3) {
+        rows += `| Level 3 | ${level3.nodeName} | ${level3.rate.toFixed(1)}% | ${level3.count} / ${level3.total} |\n`;
+    }
+    
+    rows += `\n---\n`;
+    
+    return rows;
 }
 
 function generateConfidenceRatings(task: TaskStats): string {

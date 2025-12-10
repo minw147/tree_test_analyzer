@@ -1,13 +1,15 @@
 import { useState } from "react";
 import type { UploadedData } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, PieChart as PieChartIcon, Network, Users, FileText, Edit2 } from "lucide-react";
+import { BarChart3, PieChart as PieChartIcon, Network, Users, FileText, Edit2, Share2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { OverviewTab } from "./OverviewTab";
 import { TasksTab } from "./TasksTab";
 import { ParticipantsTab } from "./ParticipantsTab";
 import { PietreeTab } from "./PietreeTab";
 import { ExportTab } from "./ExportTab";
+import { ShareDialog } from "@/components/sharing/ShareDialog";
 
 interface DashboardLayoutProps {
     data: UploadedData;
@@ -19,6 +21,7 @@ export function DashboardLayout({ data, onDataChange, onDelete: _onDelete }: Das
     const [activeTab, setActiveTab] = useState("overview");
     const [editingName, setEditingName] = useState(false);
     const [editingCreator, setEditingCreator] = useState(false);
+    const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
     return (
         <div className="h-full">
@@ -56,6 +59,16 @@ export function DashboardLayout({ data, onDataChange, onDelete: _onDelete }: Das
                         {/* Editable Creator and Stats */}
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShareDialogOpen(true)}
+                                    className="gap-2"
+                                >
+                                    <Share2 className="h-4 w-4" />
+                                    Share
+                                </Button>
+                                <span className="text-sm text-gray-400">•</span>
                                 {editingCreator ? (
                                     <Input
                                         value={data.creator || ""}
@@ -136,6 +149,15 @@ export function DashboardLayout({ data, onDataChange, onDelete: _onDelete }: Das
                     </TabsContent>
                 </Tabs>
             </main>
+
+            {/* Share Dialog */}
+            <ShareDialog
+                studyId={data.id}
+                studyName={data.name || "Untitled Analysis"}
+                studyData={data}
+                open={shareDialogOpen}
+                onOpenChange={setShareDialogOpen}
+            />
         </div>
     );
 }
