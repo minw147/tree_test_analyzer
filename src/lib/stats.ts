@@ -288,12 +288,28 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         // Filter: non-skipped AND failed (direct or indirect)
         const failedResults = taskResults.filter(r => !r.skipped && !r.successful);
 
-        // Group by final destination, keep shortest path
-        const incorrectDestinationsMap = new Map<string, { count: number; shortestPath: string }>();
+        // Prepare set of correct destinations (last segment of expected answers)
+        const correctDestinations = new Set(
+            expectedAnswers.map(ans => {
+                const parsed = parsePath(ans);
+                return parsed.length > 0 ? parsed[parsed.length - 1].toLowerCase() : "";
+            }).filter(d => d !== "")
+        );
+
+        // Group by final destination
+        const incorrectDestinationsMap = new Map<string, { count: number; shortestPath: string; name: string }>();
         failedResults.forEach(r => {
             const parsedPath = parsePath(r.pathTaken);
             if (parsedPath.length === 0) return;
+            
             const finalDestination = parsedPath[parsedPath.length - 1].toLowerCase();
+            const destinationName = parsedPath[parsedPath.length - 1]; // Original case
+
+            // Filter Correct Destinations: Check if it matches one of the expected destinations
+            if (correctDestinations.has(finalDestination)) {
+                return;
+            }
+
             const pathLength = parsedPath.length;
 
             if (incorrectDestinationsMap.has(finalDestination)) {
@@ -306,17 +322,19 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
             } else {
                 incorrectDestinationsMap.set(finalDestination, {
                     count: 1,
-                    shortestPath: r.pathTaken
+                    shortestPath: r.pathTaken,
+                    name: destinationName
                 });
             }
         });
 
-        const totalIncorrect = failedResults.length;
+        const totalFilteredIncorrect = Array.from(incorrectDestinationsMap.values()).reduce((sum, d) => sum + d.count, 0);
+        
         const incorrectDestinations = Array.from(incorrectDestinationsMap.values())
             .map((data) => ({
-                path: data.shortestPath, // shortest observed path to this destination
+                path: data.name, // Display destination name instead of full path
                 count: data.count,
-                percentage: totalIncorrect ? Math.round((data.count / totalIncorrect) * 100) : 0,
+                percentage: totalFilteredIncorrect ? Math.round((data.count / totalFilteredIncorrect) * 100) : 0,
             }))
             .sort((a, b) => b.count - a.count);
 
