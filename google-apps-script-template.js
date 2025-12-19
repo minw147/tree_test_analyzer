@@ -1,5 +1,5 @@
 /**
- * Tree Test Results - Google Apps Script
+ * Tree Test Results - Google Apps Script 12/18/2025 9:51 PM
  * 
  * This script creates a webhook endpoint that receives participant results
  * and appends them to your Google Sheet.
@@ -52,22 +52,22 @@ function doGet(e) {
   try {
     const action = e.parameter.action;
     const studyId = e.parameter.studyId;
-    
+
     if (action === 'lookup' && studyId) {
       // Public lookup endpoint - fetch study config by ID
       const result = handleFetchConfig(studyId);
       return createResponse(result);
     }
-    
+
     // Default response for invalid requests
-    return createResponse({ 
-      success: false, 
-      error: 'Invalid request. Use ?action=lookup&studyId=study-id' 
+    return createResponse({
+      success: false,
+      error: 'Invalid request. Use ?action=lookup&studyId=study-id'
     });
   } catch (error) {
-    return createResponse({ 
-      success: false, 
-      error: error.toString() 
+    return createResponse({
+      success: false,
+      error: error.toString()
     });
   }
 }
@@ -79,15 +79,15 @@ function doGet(e) {
 function doPost(e) {
   try {
     let requestData;
-    
+
     // Handle form-encoded data (to avoid CORS preflight)
     if (e.parameter && e.parameter.payload) {
       requestData = JSON.parse(e.parameter.payload);
-    } 
+    }
     // Handle JSON data (fallback for direct JSON requests)
     else if (e.postData && e.postData.contents) {
       requestData = JSON.parse(e.postData.contents);
-    } 
+    }
     else {
       throw new Error('No data received');
     }
@@ -96,9 +96,9 @@ function doPost(e) {
 
     // Debug logging (only in Apps Script editor console, not visible to users)
     if (!action) {
-      return createResponse({ 
-        success: false, 
-        error: 'No action specified. Received: ' + JSON.stringify(requestData) 
+      return createResponse({
+        success: false,
+        error: 'No action specified. Received: ' + JSON.stringify(requestData)
       });
     }
 
@@ -129,17 +129,17 @@ function doPost(e) {
         result = { success: true, message: 'Connection successful' };
         break;
       default:
-        result = { 
-          success: false, 
-          error: 'Unknown action: "' + action + '". Supported actions: appendRow, saveConfig, checkStatus, updateStatus, fetchConfig, fetchResults, test' 
+        result = {
+          success: false,
+          error: 'Unknown action: "' + action + '". Supported actions: appendRow, saveConfig, checkStatus, updateStatus, fetchConfig, fetchResults, test'
         };
     }
-    
+
     return createResponse(result);
   } catch (error) {
-    return createResponse({ 
-      success: false, 
-      error: error.toString() 
+    return createResponse({
+      success: false,
+      error: error.toString()
     });
   }
 }
@@ -148,50 +148,92 @@ function doPost(e) {
  * Handle appending a participant result row
  */
 function handleAppendRow(requestData) {
+  const lock = LockService.getScriptLock();
   try {
+    // Wait for up to 15 seconds for the lock
+    lock.waitLock(15000);
+
+    // Give Google Sheets a moment to internalize previous writes
+    Utilities.sleep(500);
+
     const rowData = requestData.data;
     const studyId = requestData.studyId;
-    
-    // Check study status BEFORE allowing submission (server-side validation)
+    const participantId = (rowData["Participant ID"] || "").toString().trim();
+
     if (studyId) {
       const statusResult = handleCheckStatus(studyId);
       if (statusResult.status === 'closed') {
-        return { 
-          success: false, 
-          error: 'This study is currently closed and not accepting new submissions.' 
-        };
+        return { success: false, error: 'This study is closed.' };
       }
     }
-    
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    
-    // If sheet doesn't exist, create it
+
+    let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
     if (!sheet) {
-      const newSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(SHEET_NAME);
-      // Determine number of tasks from the submitted data
-      const numTasks = getTaskCountFromData(rowData);
-      setupHeaders(newSheet, numTasks);
-      return handleAppendRow(rowData); // Retry with new sheet
+      sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(SHEET_NAME);
+      setupHeaders(sheet, getTaskCountFromData(rowData));
     }
 
-    // Get or create headers
     const headers = getOrCreateHeaders(sheet, rowData);
+    const rowValues = headers.map(header => rowData[header] || '');
 
-    // Build row array in correct order
-    const row = [];
-    headers.forEach(header => {
-      row.push(rowData[header] || '');
-    });
+    // Robust search for existing data
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    let existingRowIndex = -1;
+    const rowsToDelete = [];
 
-    // Append the row
-    sheet.appendRow(row);
+    if (lastRow > 1 && participantId) {
+      const allData = sheet.getRange(1, 1, lastRow, lastCol).getDisplayValues();
+      const headerRow = allData[0];
+      let idColIndex = -1;
 
+      for (let j = 0; j < headerRow.length; j++) {
+        if (headerRow[j].toString().trim().toLowerCase() === "participant id") {
+          idColIndex = j;
+          break;
+        }
+      }
+
+      if (idColIndex !== -1) {
+        const targetId = participantId.toLowerCase();
+        // Search all rows for matches
+        for (let i = 1; i < allData.length; i++) {
+          const rowId = allData[i][idColIndex].toString().trim().toLowerCase();
+          if (rowId === targetId) {
+            if (existingRowIndex === -1) {
+              existingRowIndex = i + 1; // 1-indexed row number
+            } else {
+              rowsToDelete.push(i + 1);
+            }
+          }
+        }
+      }
+    }
+
+    // Perform Update or Append
+    if (existingRowIndex !== -1) {
+      sheet.getRange(existingRowIndex, 1, 1, rowValues.length).setValues([rowValues]);
+      console.log("Updated row " + existingRowIndex + " for " + participantId);
+    } else {
+      sheet.appendRow(rowValues);
+      console.log("Appended new row for " + participantId);
+    }
+
+    // Delete any duplicates found
+    if (rowsToDelete.length > 0) {
+      console.log("Pruning " + rowsToDelete.length + " duplicates for " + participantId);
+      // Sort descending to avoid index shifts
+      rowsToDelete.sort((a, b) => b - a).forEach(idx => sheet.deleteRow(idx));
+    }
+
+    SpreadsheetApp.flush();
     return { success: true };
+
   } catch (error) {
-    return { 
-      success: false, 
-      error: error.toString() 
-    };
+    console.error("Critical Failure in handleAppendRow: " + error.toString());
+    return { success: false, error: error.toString() };
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -219,7 +261,7 @@ function getTaskCountFromData(rowData) {
 function getOrCreateHeaders(sheet, rowData) {
   const lastRow = sheet.getLastRow();
   const requiredTasks = getTaskCountFromData(rowData);
-  
+
   // If sheet is empty or first row doesn't look like headers, create headers
   if (lastRow === 0 || !isHeaderRow(sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0])) {
     // Determine number of tasks from the submitted data
@@ -228,12 +270,12 @@ function getOrCreateHeaders(sheet, rowData) {
     // Headers exist - check if we need to expand them
     const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const existingTaskCount = getTaskCountFromHeaders(existingHeaders);
-    
+
     // If submitted data has more tasks than existing headers, expand headers
     if (requiredTasks > existingTaskCount) {
       // Get base headers (first 5 columns)
       const baseHeaders = existingHeaders.slice(0, 5);
-      
+
       // Add new task headers
       const newHeaders = [...baseHeaders];
       for (let i = existingTaskCount + 1; i <= requiredTasks; i++) {
@@ -242,10 +284,10 @@ function getOrCreateHeaders(sheet, rowData) {
         newHeaders.push(`Task ${i}: How confident are you with your answer?`);
         newHeaders.push(`Task ${i} Time`);
       }
-      
+
       // Update header row
       sheet.getRange(1, 1, 1, newHeaders.length).setValues([newHeaders]);
-      
+
       // Re-format header row
       const headerRange = sheet.getRange(1, 1, 1, newHeaders.length);
       headerRange.setFontWeight('bold');
@@ -296,7 +338,7 @@ function isHeaderRow(row) {
 function setupHeaders(sheet, numTasks = 20) {
   // Clear existing content if any
   sheet.clear();
-  
+
   // Base headers
   const headers = [
     'Participant ID',
@@ -316,13 +358,13 @@ function setupHeaders(sheet, numTasks = 20) {
 
   // Set headers in first row
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  
+
   // Format header row
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
   headerRange.setFontWeight('bold');
   headerRange.setBackground('#4285f4');
   headerRange.setFontColor('#ffffff');
-  
+
   // Freeze header row
   sheet.setFrozenRows(1);
 }
@@ -333,7 +375,7 @@ function setupHeaders(sheet, numTasks = 20) {
 function handleSaveConfig(studyId, config) {
   try {
     let configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-    
+
     // Create config sheet if it doesn't exist
     if (!configSheet) {
       configSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(CONFIG_SHEET_NAME);
@@ -344,7 +386,7 @@ function handleSaveConfig(studyId, config) {
     // Check if study already exists
     const data = configSheet.getDataRange().getValues();
     let found = false;
-    
+
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === studyId) {
         // Update existing
@@ -361,9 +403,9 @@ function handleSaveConfig(studyId, config) {
 
     return { success: true };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error.toString() 
+    return {
+      success: false,
+      error: error.toString()
     };
   }
 }
@@ -374,7 +416,7 @@ function handleSaveConfig(studyId, config) {
 function handleCheckStatus(studyId) {
   try {
     const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-    
+
     if (!configSheet) {
       return { status: 'not-found' };
     }
@@ -396,9 +438,9 @@ function handleCheckStatus(studyId) {
 
     return { status: 'not-found' };
   } catch (error) {
-    return { 
-      status: 'not-found', 
-      error: error.toString() 
+    return {
+      status: 'not-found',
+      error: error.toString()
     };
   }
 }
@@ -409,7 +451,7 @@ function handleCheckStatus(studyId) {
 function handleUpdateStatus(studyId, status) {
   try {
     const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-    
+
     if (!configSheet) {
       return { success: false, error: 'Config sheet not found' };
     }
@@ -439,9 +481,9 @@ function handleUpdateStatus(studyId, status) {
 
     return { success: false, error: 'Study not found' };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error.toString() 
+    return {
+      success: false,
+      error: error.toString()
     };
   }
 }
@@ -452,7 +494,7 @@ function handleUpdateStatus(studyId, status) {
 function handleFetchConfig(studyId) {
   try {
     const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-    
+
     if (!configSheet) {
       return { config: null, error: 'Study not found' };
     }
@@ -467,9 +509,9 @@ function handleFetchConfig(studyId) {
 
     return { config: null, error: 'Study not found' };
   } catch (error) {
-    return { 
-      config: null, 
-      error: error.toString() 
+    return {
+      config: null,
+      error: error.toString()
     };
   }
 }
@@ -481,7 +523,7 @@ function handleFetchConfig(studyId) {
 function handleFetchResults(studyId) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    
+
     if (!sheet || sheet.getLastRow() === 0) {
       return { results: [] };
     }
@@ -489,7 +531,7 @@ function handleFetchResults(studyId) {
     // Get headers and data
     const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const dataRows = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
-    
+
     // Find study config to get study name
     const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
     let studyName = 'Unknown Study';
@@ -509,24 +551,25 @@ function handleFetchResults(studyId) {
     }
 
     const results = [];
-    
+
     // Process each data row
     dataRows.forEach((row) => {
       // Skip empty rows
       if (!row[0]) return;
-      
+
       // Build row object from headers
       const rowObj = {};
       headerRow.forEach((header, index) => {
         rowObj[header] = row[index];
       });
-      
+
       // Extract participant metadata
       const participantId = rowObj['Participant ID'] || '';
-      const status = rowObj['Status'] === 'Completed' ? 'completed' : 'abandoned';
+      const rawStatus = (rowObj['Status'] || '').toString().trim().toLowerCase();
+      const status = rawStatus === 'completed' ? 'completed' : 'incomplete';
       const startedAt = rowObj['Start Time (UTC)'] || new Date().toISOString();
       const completedAt = rowObj['End Time (UTC)'] || null;
-      
+
       // Parse duration "HH:MM:SS" to seconds
       let totalActiveTime = 0;
       if (rowObj['Time Taken']) {
@@ -535,17 +578,17 @@ function handleFetchResults(studyId) {
           totalActiveTime = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
         }
       }
-      
+
       // Extract task results
       const taskResults = [];
       let taskNum = 1;
-      
+
       while (rowObj[`Task ${taskNum} Path Taken`] !== undefined) {
         const pathTaken = rowObj[`Task ${taskNum} Path Taken`] || '';
         const outcomeStr = rowObj[`Task ${taskNum} Path Outcome`] || '';
         const confidence = rowObj[`Task ${taskNum}: How confident are you with your answer?`];
         const timeSeconds = parseFloat(rowObj[`Task ${taskNum} Time`]) || 0;
-        
+
         // Map outcome string back to PathOutcome type
         let outcome = 'failure';
         if (outcomeStr.includes('Direct Success')) outcome = 'direct-success';
@@ -553,10 +596,10 @@ function handleFetchResults(studyId) {
         else if (outcomeStr.includes('Direct Skip')) outcome = 'direct-skip';
         else if (outcomeStr.includes('Indirect Skip')) outcome = 'indirect-skip';
         else if (outcomeStr.includes('Failure')) outcome = 'failure';
-        
+
         // Parse path taken (split by '/')
         const pathTakenArray = pathTaken ? pathTaken.split('/').filter(p => p.trim()) : [];
-        
+
         taskResults.push({
           taskId: `task-${taskNum}`,
           taskDescription: `Task ${taskNum}`,
@@ -566,10 +609,10 @@ function handleFetchResults(studyId) {
           timeSeconds: timeSeconds,
           timestamp: startedAt // Use study start time as task timestamp
         });
-        
+
         taskNum++;
       }
-      
+
       // Only include results that have at least one task
       if (taskResults.length > 0) {
         results.push({
@@ -584,12 +627,12 @@ function handleFetchResults(studyId) {
         });
       }
     });
-    
+
     return { results: results };
   } catch (error) {
-    return { 
-      results: null, 
-      error: error.toString() 
+    return {
+      results: null,
+      error: error.toString()
     };
   }
 }

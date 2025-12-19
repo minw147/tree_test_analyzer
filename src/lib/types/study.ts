@@ -77,9 +77,9 @@ export interface ParticipantResult {
     participantId: string;
     studyId: string;
     studyName: string;
-    status: 'completed' | 'abandoned';
+    status: 'completed' | 'incomplete';
     startedAt: string; // ISO timestamp
-    completedAt?: string; // ISO timestamp (null if abandoned)
+    completedAt?: string; // ISO timestamp (null if incomplete)
     totalActiveTime: number; // Total active time in seconds
     taskResults: TaskResult[];
     userAgent?: string;

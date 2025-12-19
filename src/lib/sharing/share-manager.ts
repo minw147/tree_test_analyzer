@@ -49,16 +49,16 @@ export async function createShareLink(
   config?: ShareLinkConfig
 ): Promise<ShareLink> {
   const shareLinks = loadShareLinks();
-  
+
   // Generate unique ID
   const shareId = generateShareId();
-  
+
   // Hash password if provided
   let passwordHash: string | undefined;
   if (config?.password) {
     passwordHash = await hashPassword(config.password);
   }
-  
+
   // Calculate expiration if provided
   let expiresAt: string | undefined;
   if (config?.expiresInDays) {
@@ -66,7 +66,7 @@ export async function createShareLink(
     expirationDate.setDate(expirationDate.getDate() + config.expiresInDays);
     expiresAt = expirationDate.toISOString();
   }
-  
+
   // Create share link
   const shareLink: ShareLink = {
     id: shareId,
@@ -76,11 +76,11 @@ export async function createShareLink(
     expiresAt,
     accessCount: 0,
   };
-  
+
   // Save to localStorage
   shareLinks[shareId] = shareLink;
   saveShareLinks(shareLinks);
-  
+
   return shareLink;
 }
 
@@ -95,14 +95,14 @@ export function getShareLink(shareId: string, urlHash?: string): ShareLink | nul
   // First, try localStorage (works for same browser)
   const shareLinks = loadShareLinks();
   let shareLink = shareLinks[shareId];
-  
+
   // If not found in localStorage, try to decode from URL hash (cross-browser)
   if (!shareLink && urlHash) {
     try {
       // Decompress using lz-string (try new format first)
       let decompressed = LZString.decompressFromEncodedURIComponent(urlHash);
       let decoded;
-      
+
       if (decompressed) {
         // New format: lz-string compressed
         decoded = JSON.parse(decompressed);
@@ -114,7 +114,7 @@ export function getShareLink(shareId: string, urlHash?: string): ShareLink | nul
           throw new Error('Failed to decode URL hash');
         }
       }
-      
+
       // Extract share link metadata from decoded data
       if (decoded.shareLink && decoded.shareLink.id === shareId) {
         // New format: full data with shareLink metadata
@@ -141,11 +141,11 @@ export function getShareLink(shareId: string, urlHash?: string): ShareLink | nul
       console.error('Failed to decode share link from URL:', error);
     }
   }
-  
+
   if (!shareLink) {
     return null;
   }
-  
+
   // Check expiration
   if (shareLink.expiresAt) {
     const expirationDate = new Date(shareLink.expiresAt);
@@ -157,14 +157,14 @@ export function getShareLink(shareId: string, urlHash?: string): ShareLink | nul
       return null;
     }
   }
-  
+
   // Only increment access count if from localStorage (can't track across browsers)
   if (shareLinks[shareId]) {
     shareLink.accessCount += 1;
     shareLink.lastAccessedAt = new Date().toISOString();
     saveShareLinks(shareLinks);
   }
-  
+
   return shareLink;
 }
 
@@ -179,14 +179,14 @@ export async function validateShareLink(
   password?: string
 ): Promise<ShareLinkValidation> {
   const shareLink = getShareLink(shareId);
-  
+
   if (!shareLink) {
     return {
       valid: false,
       error: 'Share link not found or expired',
     };
   }
-  
+
   // If password is required, verify it
   if (shareLink.passwordHash) {
     if (!password) {
@@ -195,7 +195,7 @@ export async function validateShareLink(
         error: 'Password required',
       };
     }
-    
+
     const isValid = await verifyPassword(password, shareLink.passwordHash);
     if (!isValid) {
       return {
@@ -204,7 +204,7 @@ export async function validateShareLink(
       };
     }
   }
-  
+
   return {
     valid: true,
     shareLink,
@@ -243,22 +243,22 @@ export function checkForUpdates(
 ): { hasUpdates: boolean; updatedData?: UploadedData } {
   // Load studies from analyzer storage (same as Analyzer.tsx)
   const STORAGE_KEY_ANALYZER_STUDIES = 'tree-test-analyzer-studies';
-  
+
   try {
     const saved = localStorage.getItem(STORAGE_KEY_ANALYZER_STUDIES);
     if (!saved) {
       return { hasUpdates: false };
     }
-    
+
     const studies: UploadedData[] = JSON.parse(saved);
     const currentStudy = studies.find(s => s.id === studyId);
-    
+
     if (!currentStudy) {
       return { hasUpdates: false };
     }
-    
+
     const hasUpdates = currentStudy.updatedAt !== lastUpdatedAt;
-    
+
     return {
       hasUpdates,
       updatedData: hasUpdates ? currentStudy : undefined,
@@ -280,7 +280,7 @@ function optimizeStudyDataForSharing(studyData: UploadedData, shareLink: ShareLi
   // Convert participants to optimized format
   const optimizedParticipants = studyData.participants.map(p => ({
     i: p.id, // id
-    s: p.status === 'Completed' ? 1 : 0, // status (1=completed, 0=abandoned)
+    s: p.status === 'Completed' ? 1 : 0, // status (1=completed, 0=incomplete)
     st: p.startedAt instanceof Date ? p.startedAt.getTime() : new Date(p.startedAt).getTime(), // startedAt (timestamp)
     ct: p.completedAt ? (p.completedAt instanceof Date ? p.completedAt.getTime() : new Date(p.completedAt).getTime()) : null, // completedAt (timestamp)
     d: p.durationSeconds, // durationSeconds
@@ -338,18 +338,18 @@ export function reconstructStudyData(optimized: any): UploadedData {
     description: t.d,
     expectedAnswer: t.e,
   }));
-  
+
   // Create a map for quick lookup
   type TaskType = { id: string; index: number; description: string; expectedAnswer: string };
   const taskIndexToTask = new Map<number, TaskType>(tasks.map((t: TaskType) => [t.index, t]));
-  
+
   return {
     id: optimized.i,
     name: optimized.n,
     creator: optimized.c,
     participants: optimized.p.map((p: any) => ({
       id: p.i,
-      status: p.s === 1 ? 'Completed' : 'Abandoned',
+      status: p.s === 1 ? 'Completed' : 'Incomplete',
       startedAt: new Date(p.st),
       completedAt: p.ct ? new Date(p.ct) : null,
       durationSeconds: p.d,
@@ -399,18 +399,18 @@ export function reconstructShareLink(optimized: any, shareId: string): ShareLink
  */
 export function getShareableUrl(shareLink: ShareLink, studyData?: UploadedData): string {
   const baseUrl = window.location.origin;
-  
+
   // If study data is provided, embed it in the URL hash for cross-browser access
   // This allows the link to work even if localStorage isn't shared
   if (studyData) {
     try {
       // Optimize data structure (shorter keys, remove unnecessary fields, convert dates)
       const optimized = optimizeStudyDataForSharing(studyData, shareLink);
-      
+
       // Compress and encode using lz-string (URI-safe encoding for URLs)
       const jsonString = JSON.stringify(optimized);
       const encoded = LZString.compressToEncodedURIComponent(jsonString);
-      
+
       return `${baseUrl}/share/${shareLink.id}#${encoded}`;
     } catch (error) {
       console.error('Failed to encode study data in URL:', error);
@@ -418,7 +418,7 @@ export function getShareableUrl(shareLink: ShareLink, studyData?: UploadedData):
       return `${baseUrl}/share/${shareLink.id}`;
     }
   }
-  
+
   // Fallback: just the share ID (won't work cross-browser)
   return `${baseUrl}/share/${shareLink.id}`;
 }

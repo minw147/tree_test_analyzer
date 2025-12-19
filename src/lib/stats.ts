@@ -24,7 +24,7 @@ function computeStatistics(values: number[]): { median: number; min: number; max
 export function calculateOverviewStats(data: UploadedData): TreeTestOverviewStats {
     const totalParticipants = data.participants.length;
     const completedParticipants = data.participants.filter(p => p.status === "Completed").length;
-    const abandonedParticipants = totalParticipants - completedParticipants;
+    const incompleteParticipants = totalParticipants - completedParticipants;
 
     const completionTimes = data.participants
         .filter(p => p.status === "Completed" && (p.durationSeconds || 0) > 0)
@@ -64,7 +64,7 @@ export function calculateOverviewStats(data: UploadedData): TreeTestOverviewStat
     return {
         totalParticipants,
         completedParticipants,
-        abandonedParticipants,
+        incompleteParticipants,
         completionRate: Math.round(completionRate),
         medianCompletionTime,
         shortestCompletionTime,
@@ -262,7 +262,7 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
                     // For multi-root trees, format as /NodeName
                     currentPath = `/${part}`;
                 }
-                
+
                 // Increment count if this is a tracked parent node
                 if (currentPath && parentClickStats.has(currentPath)) {
                     const stats = parentClickStats.get(currentPath);
@@ -301,7 +301,7 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         failedResults.forEach(r => {
             const parsedPath = parsePath(r.pathTaken);
             if (parsedPath.length === 0) return;
-            
+
             const finalDestination = parsedPath[parsedPath.length - 1].toLowerCase();
             const destinationName = parsedPath[parsedPath.length - 1]; // Original case
 
@@ -329,7 +329,7 @@ export function calculateTaskStats(data: UploadedData, tree: Item[]): TaskStats[
         });
 
         const totalFilteredIncorrect = Array.from(incorrectDestinationsMap.values()).reduce((sum, d) => sum + d.count, 0);
-        
+
         const incorrectDestinations = Array.from(incorrectDestinationsMap.values())
             .map((data) => ({
                 path: data.name, // Display destination name instead of full path

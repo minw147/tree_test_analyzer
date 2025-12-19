@@ -15,7 +15,7 @@ export class LocalDownloadAdapter implements StorageAdapter {
             // We need to flatten the task results into columns
             const row: Record<string, string | number | null> = {
                 "Participant ID": result.participantId,
-                "Status": result.status === 'completed' ? 'Completed' : 'Abandoned',
+                "Status": result.status === 'completed' ? 'Completed' : 'Incomplete',
                 "Start Time (UTC)": result.startedAt,
                 "End Time (UTC)": result.completedAt || null,
                 "Time Taken": this.formatDuration(result.totalActiveTime),

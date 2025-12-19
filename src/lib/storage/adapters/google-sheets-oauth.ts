@@ -48,7 +48,7 @@ export class GoogleSheetsOAuthAdapter implements StorageAdapter {
     private formatResultForSheet(result: ParticipantResult): (string | number | null)[] {
         const row: (string | number | null)[] = [
             result.participantId,
-            result.status === 'completed' ? 'Completed' : 'Abandoned',
+            result.status === 'completed' ? 'Completed' : 'Incomplete',
             result.startedAt,
             result.completedAt || null,
             this.formatDuration(result.totalActiveTime),

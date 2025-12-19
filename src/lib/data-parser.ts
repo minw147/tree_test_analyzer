@@ -48,7 +48,8 @@ export async function parseResponseData(file: File): Promise<Omit<UploadedData, 
 
                 jsonData.forEach((row: any, index) => {
                     const participantId = row["Participant ID"]?.toString() || `p-${index}`;
-                    const status = row["Status"] === "Completed" ? "Completed" : "Abandoned";
+                    const rawStatus = (row["Status"] || "").toString().trim().toLowerCase();
+                    const status = rawStatus === "completed" ? "Completed" : "Incomplete";
                     const startedAt = new Date(row["Start Time (UTC)"] || new Date());
                     const completedAt = row["End Time (UTC)"] ? new Date(row["End Time (UTC)"]) : null;
 

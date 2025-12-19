@@ -25,14 +25,14 @@ function convertParticipants(
         // Convert task results
         const taskResults: TaskResult[] = result.taskResults.map((task) => {
             // Ensure pathTaken is an array
-            const pathTakenArray = Array.isArray(task.pathTaken) 
-                ? task.pathTaken 
+            const pathTakenArray = Array.isArray(task.pathTaken)
+                ? task.pathTaken
                 : (task.pathTaken ? [task.pathTaken] : []);
-            
+
             // Map outcome to successful and directPathTaken
             let successful = false;
             let directPathTaken = false;
-            
+
             switch (task.outcome) {
                 case 'direct-success':
                     successful = true;
@@ -60,7 +60,7 @@ function convertParticipants(
             // Or use the actual task ID if it's not in the format "task-N"
             let actualTaskId = task.taskId;
             let taskIndex = taskIdToIndex.get(task.taskId);
-            
+
             // If taskId is in format "task-N", extract the number and map to actual task ID
             const taskNumMatch = task.taskId.match(/^task-(\d+)$/);
             if (taskNumMatch) {
@@ -89,7 +89,7 @@ function convertParticipants(
         // Calculate duration in seconds
         // First try to use totalActiveTime, but if it's missing or 0, calculate from timestamps
         let durationSeconds: number | null = null;
-        
+
         if (result.totalActiveTime !== undefined && result.totalActiveTime !== null && result.totalActiveTime > 0) {
             durationSeconds = result.totalActiveTime;
         } else if (result.startedAt && result.completedAt) {
@@ -103,7 +103,7 @@ function convertParticipants(
 
         return {
             id: result.participantId,
-            status: result.status === 'completed' ? 'Completed' : 'Abandoned',
+            status: (result.status || '').toString().toLowerCase() === 'completed' ? 'Completed' : 'Incomplete',
             startedAt: new Date(result.startedAt),
             completedAt: result.completedAt ? new Date(result.completedAt) : null,
             durationSeconds: durationSeconds,
@@ -121,7 +121,7 @@ function convertTasks(studyConfig: StudyConfig): { id: string; index: number; de
         const expectedAnswer = task.correctPath && task.correctPath.length > 0
             ? task.correctPath.join(', ')
             : '';
-        
+
         return {
             id: task.id,
             index: index + 1, // Task index is 1-based in analyzer
@@ -139,18 +139,18 @@ function convertTree(tree: StudyConfig['tree']): Item[] {
         const item: Item = {
             name: node.name,
         };
-        
+
         if (node.link) {
             item.link = node.link;
         }
-        
+
         if (node.children && node.children.length > 0) {
             item.children = node.children.map(convertNode);
         }
-        
+
         return item;
     }
-    
+
     return tree.map(convertNode);
 }
 
