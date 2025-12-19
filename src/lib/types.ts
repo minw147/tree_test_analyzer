@@ -13,7 +13,7 @@ export interface Item {
 export interface TreeTestOverviewStats {
     totalParticipants: number;
     completedParticipants: number;
-    abandonedParticipants: number;
+    incompleteParticipants: number;
     completionRate: number;
     medianCompletionTime: number;
     shortestCompletionTime: number;
@@ -117,7 +117,7 @@ export interface TaskStats {
 
 export interface Participant {
     id: string;
-    status: "Completed" | "Abandoned";
+    status: "Completed" | "Incomplete";
     startedAt: Date;
     completedAt: Date | null;
     durationSeconds: number | null;

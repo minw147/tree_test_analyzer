@@ -36,7 +36,7 @@ export class CustomApiAdapter implements StorageAdapter {
 
         try {
             const isSupabase = this.config.endpointUrl.includes('supabase.co');
-            
+
             // For Supabase, wrap the config in the table schema format
             // For other APIs, send the config directly
             const payload = isSupabase ? {
@@ -64,7 +64,7 @@ export class CustomApiAdapter implements StorageAdapter {
                             ...payload,
                             created_at: config.createdAt || new Date().toISOString(),
                         };
-                        
+
                         response = await fetch(`${this.config.endpointUrl}/studies`, {
                             method: 'POST',
                             headers: this.getHeaders(),
@@ -87,7 +87,7 @@ export class CustomApiAdapter implements StorageAdapter {
                         ...payload,
                         created_at: config.createdAt || new Date().toISOString(),
                     };
-                    
+
                     response = await fetch(`${this.config.endpointUrl}/studies`, {
                         method: 'POST',
                         headers: this.getHeaders(),
@@ -147,17 +147,23 @@ export class CustomApiAdapter implements StorageAdapter {
 
         try {
             const isSupabase = this.config.endpointUrl.includes('supabase.co');
-            
+
             if (isSupabase) {
-                // For Supabase, POST to the results table with proper schema
+                // For Supabase, POST to the results table with upsert preference
                 const payload = {
                     study_id: result.studyId,
+                    participant_id: result.participantId,
                     result_data: result, // Store entire ParticipantResult in JSONB column
                 };
-                
+
+                const headers = {
+                    ...(this.getHeaders() as Record<string, string>),
+                    'Prefer': 'upsert=true'
+                };
+
                 const response = await fetch(`${this.config.endpointUrl}/results`, {
                     method: 'POST',
-                    headers: this.getHeaders(),
+                    headers: headers,
                     body: JSON.stringify(payload),
                 });
 
@@ -194,7 +200,7 @@ export class CustomApiAdapter implements StorageAdapter {
 
         try {
             const isSupabase = this.config.endpointUrl.includes('supabase.co');
-            
+
             if (isSupabase) {
                 // For Supabase, use the SQL function via RPC endpoint
                 const response = await fetch(`${this.config.endpointUrl}/rpc/get_study_status`, {
@@ -247,15 +253,15 @@ export class CustomApiAdapter implements StorageAdapter {
 
         try {
             const isSupabase = this.config.endpointUrl.includes('supabase.co');
-            
+
             if (isSupabase) {
                 // For Supabase, use the SQL function via RPC endpoint
                 const response = await fetch(`${this.config.endpointUrl}/rpc/update_study_status`, {
                     method: 'POST',
                     headers: this.getHeaders(),
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         study_id_param: studyId,
-                        new_status: status 
+                        new_status: status
                     }),
                 });
 
@@ -296,7 +302,7 @@ export class CustomApiAdapter implements StorageAdapter {
 
         try {
             const isSupabase = this.config.endpointUrl.includes('supabase.co');
-            
+
             if (isSupabase) {
                 // For Supabase, use query parameter to get by ID
                 const response = await fetch(`${this.config.endpointUrl}/studies?id=eq.${studyId}`, {
@@ -314,19 +320,19 @@ export class CustomApiAdapter implements StorageAdapter {
                 }
 
                 const data = await response.json();
-                
+
                 // Supabase returns an array, get first element
                 if (!Array.isArray(data) || data.length === 0) {
                     return { config: null, error: "Study not found" };
                 }
-                
+
                 // Extract the config from the JSONB column
                 const config = data[0].config;
-                
+
                 if (!config) {
                     return { config: null, error: "Study config not found" };
                 }
-                
+
                 return { config };
             } else {
                 // For other APIs, use standard endpoint
@@ -358,7 +364,7 @@ export class CustomApiAdapter implements StorageAdapter {
 
         try {
             const isSupabase = this.config.endpointUrl.includes('supabase.co');
-            
+
             if (isSupabase) {
                 // For Supabase, test by querying the studies table
                 // Use a dummy query that will return empty or 404, but confirms API is reachable
@@ -407,7 +413,7 @@ export class CustomApiAdapter implements StorageAdapter {
 
         try {
             const isSupabase = this.config.endpointUrl.includes('supabase.co');
-            
+
             const response = await fetch(`${this.config.endpointUrl}/studies`, {
                 method: 'GET',
                 headers: this.getHeaders(),
@@ -419,7 +425,7 @@ export class CustomApiAdapter implements StorageAdapter {
             }
 
             const data = await response.json();
-            
+
             if (isSupabase) {
                 // For Supabase, data is an array of rows, each with a 'config' JSONB column
                 if (Array.isArray(data)) {
@@ -456,7 +462,7 @@ export class CustomApiAdapter implements StorageAdapter {
 
         try {
             const isSupabase = this.config.endpointUrl.includes('supabase.co');
-            
+
             if (isSupabase) {
                 // For Supabase, query the results table directly using study_id filter
                 const response = await fetch(`${this.config.endpointUrl}/results?study_id=eq.${studyId}`, {
@@ -474,7 +480,7 @@ export class CustomApiAdapter implements StorageAdapter {
                 }
 
                 const data = await response.json();
-                
+
                 // Supabase returns an array of rows, each with result_data JSONB column
                 if (Array.isArray(data)) {
                     // Extract the result_data from each row
@@ -500,7 +506,7 @@ export class CustomApiAdapter implements StorageAdapter {
                 }
 
                 const results = await response.json();
-                
+
                 // Ensure we return an array
                 if (Array.isArray(results)) {
                     return { results };

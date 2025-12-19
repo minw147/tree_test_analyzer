@@ -25,12 +25,22 @@ export function ParticipantView() {
     });
 
     // Track test data
+    const [participantId] = useState(() => `P${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
     const testStartTime = useRef<number>(Date.now());
     const taskStartTimes = useRef<Map<number, number>>(new Map());
     const taskPaths = useRef<Map<number, string[]>>(new Map());
     const taskClicks = useRef<Map<number, number>>(new Map());
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+    const isSubmittingRealTime = useRef(false);
+    const pendingUpdate = useRef<{ status: 'incomplete' | 'completed', results: any[] } | null>(null);
+
+    // Maintain a list of completed task results for real-time submission
+    const currentTaskResults = useRef<Array<{
+        taskIndex: number;
+        selectedPath: string;
+        confidence?: number;
+    }>>([]);
+
     // Task randomization state
     const [shuffledTasks, setShuffledTasks] = useState<Task[] | null>(null);
     const shuffledTaskIdToIndex = useRef<Map<string, number>>(new Map()); // Maps task ID → shuffled index
@@ -60,7 +70,7 @@ export function ParticipantView() {
         if (study.settings.randomizeTasks === true && study.tasks.length > 1) {
             const shuffled = shuffleTasks(study.tasks);
             setShuffledTasks(shuffled);
-            
+
             // Create mapping: taskId → shuffled index
             const idToIndex = new Map<string, number>();
             const indexToId = new Map<number, string>();
@@ -81,12 +91,12 @@ export function ParticipantView() {
     const loadStudyConfig = async (id: string) => {
         try {
             console.log("Loading study with ID:", id);
-            
+
             // Strategy for loading study config:
             // 1. Try sessionStorage first (for preview/testing)
             // 2. Try localStorage (for local studies)
             // 3. Try to fetch from storage adapters
-            
+
             // Try sessionStorage first (for preview/testing)
             const previewStudy = sessionStorage.getItem("previewStudy");
             if (previewStudy) {
@@ -103,12 +113,12 @@ export function ParticipantView() {
                             });
                             return;
                         }
-                        
+
                         // Then verify with storage adapter
                         try {
                             const adapter = createStorageAdapter(parsed.storage);
                             const statusResult = await adapter.checkStatus(id);
-                            
+
                             if (statusResult.status === 'closed') {
                                 setState({
                                     study: null,
@@ -129,7 +139,7 @@ export function ParticipantView() {
                                 return;
                             }
                         }
-                        
+
                         setState({
                             study: parsed,
                             loadingState: 'ready',
@@ -150,10 +160,10 @@ export function ParticipantView() {
                     const storedStudies: StudyConfig[] = JSON.parse(storedStudiesJson);
                     const parsed = storedStudies.find(s => s.id === id);
                     console.log("Found stored studies, looking for ID:", id);
-                    
+
                     if (parsed) {
                         console.log("Study ID matches!");
-                        
+
                         // Check status FIRST - before any other checks
                         const isStudyClosed = parsed.accessStatus === 'closed';
                         if (isStudyClosed) {
@@ -164,13 +174,13 @@ export function ParticipantView() {
                             });
                             return;
                         }
-                        
+
                         // Check if study is published (for local testing, we'll allow draft studies too)
                         // But show a warning if it's not published
                         if (parsed.status !== 'published') {
                             console.warn("Study is not published, but loading anyway for testing");
                         }
-                        
+
                         // For local-download or when storage is not configured, check status first
                         if (!parsed.storage || parsed.storage.type === 'local-download') {
                             console.log("Using local config (local-download storage)");
@@ -191,18 +201,18 @@ export function ParticipantView() {
                             });
                             return;
                         }
-                        
+
                         // Try to fetch from storage adapter
                         try {
                             console.log("Attempting to fetch from storage adapter:", parsed.storage.type);
                             const adapter = createStorageAdapter(parsed.storage);
                             const fetchResult = await adapter.fetchConfig(id);
-                            
+
                             if (fetchResult.config) {
                                 console.log("Successfully fetched config from storage");
                                 // Check status FIRST before allowing access
                                 const statusResult = await adapter.checkStatus(id);
-                                
+
                                 if (statusResult.status === 'closed') {
                                     setState({
                                         study: null,
@@ -211,7 +221,7 @@ export function ParticipantView() {
                                     });
                                     return;
                                 }
-                                
+
                                 // Also check the config's accessStatus as a double-check
                                 if (fetchResult.config.accessStatus === 'closed') {
                                     setState({
@@ -221,7 +231,7 @@ export function ParticipantView() {
                                     });
                                     return;
                                 }
-                                
+
                                 setState({
                                     study: fetchResult.config,
                                     loadingState: 'ready',
@@ -244,7 +254,7 @@ export function ParticipantView() {
                                 return;
                             }
                         }
-                        
+
                         // Use local config as fallback, but check status first
                         console.log("Using local config as fallback");
                         if (isStudyClosed) {
@@ -269,7 +279,7 @@ export function ParticipantView() {
             } else {
                 console.log("No study found in localStorage");
             }
-            
+
             // Try to fetch from Google Sheets if webhook URL is provided in URL parameter
             // This enables cross-device access for Google Sheets storage
             const urlParams = new URLSearchParams(window.location.search);
@@ -283,12 +293,12 @@ export function ParticipantView() {
                         webhookUrl: webhookUrl,
                     });
                     const fetchResult = await adapter.fetchConfig(id);
-                    
+
                     if (fetchResult.config) {
                         console.log("Successfully fetched config from Google Sheets via webhook parameter");
                         // Check status FIRST before allowing access
                         const statusResult = await adapter.checkStatus(id);
-                        
+
                         if (statusResult.status === 'closed') {
                             setState({
                                 study: null,
@@ -297,7 +307,7 @@ export function ParticipantView() {
                             });
                             return;
                         }
-                        
+
                         // Also check the config's accessStatus as a double-check
                         if (fetchResult.config.accessStatus === 'closed') {
                             setState({
@@ -307,7 +317,7 @@ export function ParticipantView() {
                             });
                             return;
                         }
-                        
+
                         setState({
                             study: fetchResult.config,
                             loadingState: 'ready',
@@ -320,7 +330,7 @@ export function ParticipantView() {
                     console.error("Failed to fetch from webhook URL parameter:", webhookError);
                 }
             }
-            
+
             // TODO: For production, implement:
             // 1. Try hosted backend first (default for published studies)
             // 2. Study registry that maps studyId to storage type/config
@@ -354,30 +364,165 @@ export function ParticipantView() {
         const currentPath = taskPaths.current.get(taskIndex) || [];
         const pathParts = path.split('/').filter(Boolean);
         const nodeName = pathParts[pathParts.length - 1];
-        
+
         // Prevent duplicate consecutive clicks (like Usabilitree)
         // Only add if it's different from the last node, OR if it's a backtrack
         const lastNode = currentPath[currentPath.length - 1];
-        const isBacktrack = lastNode && pathParts.length > 0 && 
+        const isBacktrack = lastNode && pathParts.length > 0 &&
             pathParts.slice(0, -1).includes(nodeName);
-        
+
         if (lastNode !== nodeName || isBacktrack) {
             // Add node to path (track full sequence, including backtracking)
             taskPaths.current.set(taskIndex, [...currentPath, nodeName]);
-            
+
             // Increment click count
             const clicks = taskClicks.current.get(taskIndex) || 0;
             taskClicks.current.set(taskIndex, clicks + 1);
         }
     };
 
-    const handleTaskComplete = (
-        _taskIndex: number,
-        _selectedPath: string,
-        _confidence?: number
+    const calculateTaskResult = (
+        task: Task,
+        allTaskResults: Array<{ taskIndex: number; selectedPath: string; confidence?: number }>
+    ): TaskResult => {
+        // Find result by taskId (handles both randomized and non-randomized cases)
+        // If randomized, we need to find the shuffled index for this task
+        const shuffledIndex = shuffledTaskIdToIndex.current.get(task.id);
+        const displayIndex = shuffledIndex !== undefined
+            ? shuffledIndex
+            : (state.study?.tasks.findIndex(t => t.id === task.id) ?? -1);
+
+        const taskResult = allTaskResults.find(tr => tr.taskIndex === displayIndex);
+
+        // If the task hasn't been completed yet, return placeholder data
+        if (!taskResult) {
+            return {
+                taskId: task.id,
+                taskDescription: task.description,
+                pathTaken: [],
+                outcome: '' as PathOutcome, // Empty string in sheet
+                confidence: undefined,
+                timeSeconds: 0,
+                timestamp: new Date().toISOString(),
+            };
+        }
+
+        const taskStartTime = taskStartTimes.current.get(displayIndex) || testStartTime.current;
+        const taskTime = Math.floor((Date.now() - taskStartTime) / 1000);
+        const pathTaken = taskPaths.current.get(displayIndex) || [];
+
+        // Determine outcome based on correct path
+        let outcome: PathOutcome = 'failure';
+        // Check if task was skipped (empty selectedPath)
+        if (!taskResult.selectedPath || taskResult.selectedPath === "") {
+            // Determine if direct skip (no interaction) or indirect skip (some interaction)
+            const clicks = taskClicks.current.get(displayIndex) || 0;
+            const pathTakenForSkip = taskPaths.current.get(displayIndex) || [];
+            outcome = (clicks === 0 && pathTakenForSkip.length === 0) ? 'direct-skip' : 'indirect-skip';
+        } else {
+            const selectedPathParts = taskResult.selectedPath.split('/').filter(Boolean);
+            const pathTakenForCheck = taskPaths.current.get(displayIndex) || [];
+            const correctPaths = task.correctPath || [];
+
+            const isCorrect = correctPaths.some(correctPath => {
+                const correctParts = correctPath.split('/').filter(Boolean);
+                if (selectedPathParts.length !== correctParts.length) return false;
+                return selectedPathParts.every((part, i) => part === correctParts[i]);
+            });
+
+            if (isCorrect) {
+                const pathTakenMatchesExactly = correctPaths.some(correctPath => {
+                    const correctParts = correctPath.split('/').filter(Boolean);
+                    if (pathTakenForCheck.length !== correctParts.length) return false;
+                    return pathTakenForCheck.every((node, i) => node === correctParts[i]);
+                });
+                outcome = pathTakenMatchesExactly ? 'direct-success' : 'indirect-success';
+            } else {
+                outcome = 'failure';
+            }
+        }
+
+        return {
+            taskId: task.id,
+            taskDescription: task.description,
+            pathTaken: pathTaken,
+            outcome: outcome,
+            confidence: taskResult?.confidence,
+            timeSeconds: taskTime,
+            timestamp: new Date().toISOString(),
+        };
+    };
+
+    const submitRealTimeUpdate = async (
+        status: 'incomplete' | 'completed',
+        allTaskResults: Array<{ taskIndex: number; selectedPath: string; confidence?: number }>
     ) => {
-        // Task result is stored, will be submitted when all tasks complete
-        // This is just a callback for tracking if needed
+        if (!state.study) return;
+
+        // If a submission is already in progress, queue this one and return
+        if (isSubmittingRealTime.current) {
+            pendingUpdate.current = { status, results: allTaskResults };
+            return;
+        }
+
+        isSubmittingRealTime.current = true;
+
+        try {
+            const totalActiveTime = Math.floor((Date.now() - testStartTime.current) / 1000);
+            const taskResults = state.study.tasks.map(task => calculateTaskResult(task, allTaskResults));
+
+            const result: ParticipantResult = {
+                participantId: participantId,
+                studyId: state.study.id,
+                studyName: state.study.name,
+                status: status,
+                startedAt: new Date(testStartTime.current).toISOString(),
+                completedAt: status === 'completed' ? new Date().toISOString() : undefined,
+                totalActiveTime: totalActiveTime,
+                taskResults: taskResults,
+                userAgent: navigator.userAgent,
+            };
+
+            const adapter = createStorageAdapter(state.study.storage);
+
+            console.log(`[RealTime] Submitting update (${status}) with ${allTaskResults.length} task results...`, {
+                participantId,
+                tasksInPayload: taskResults.filter(t => t.outcome !== ('' as PathOutcome)).length
+            });
+
+            const submitResult = await adapter.submitResult(result);
+
+            if (!submitResult.success) {
+                console.error("Failed to submit real-time update:", submitResult.error);
+            } else {
+                console.log(`Real-time update submitted successfully (${status})`);
+            }
+        } catch (error) {
+            console.error("Error during real-time submission:", error);
+        } finally {
+            isSubmittingRealTime.current = false;
+
+            // If an update was queued while we were submitting, trigger it now
+            if (pendingUpdate.current) {
+                const next = pendingUpdate.current;
+                pendingUpdate.current = null;
+                submitRealTimeUpdate(next.status, next.results);
+            }
+        }
+    };
+
+    const handleTaskComplete = (
+        taskIndex: number,
+        selectedPath: string,
+        confidence?: number
+    ) => {
+        const newResult = { taskIndex, selectedPath, confidence };
+        console.log(`[RealTime] Task ${taskIndex} complete. Accumulating result. Current count:`, currentTaskResults.current.length);
+
+        currentTaskResults.current = [...currentTaskResults.current, newResult];
+
+        // Background submission (don't await)
+        submitRealTimeUpdate('incomplete', currentTaskResults.current);
     };
 
     const handleTestComplete = async (allTaskResults: Array<{
@@ -401,12 +546,12 @@ export function ParticipantView() {
             try {
                 const adapter = createStorageAdapter(state.study.storage);
                 const statusResult = await adapter.checkStatus(state.study.id);
-                
+
                 if (statusResult.status === 'closed') {
                     alert('This study is currently closed and not accepting new submissions.');
                     return;
                 }
-                
+
                 // If status check returns 'not-found', but we successfully loaded config from API,
                 // trust the config's accessStatus instead of blocking (study exists, status endpoint might have issue)
                 if (statusResult.status === 'not-found') {
@@ -425,92 +570,9 @@ export function ParticipantView() {
         setIsSubmitting(true);
 
         try {
-            // Generate participant ID
-            const participantId = `P${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            
-            // Calculate total active time
+            // Use the consistent participantId
             const totalActiveTime = Math.floor((Date.now() - testStartTime.current) / 1000);
-
-            // Build task results - always iterate over ORIGINAL tasks in original order
-            const taskResults: TaskResult[] = state.study.tasks.map((task) => {
-                // Find result by taskId (handles both randomized and non-randomized cases)
-                // If randomized, we need to find the shuffled index for this task
-                const shuffledIndex = shuffledTaskIdToIndex.current.get(task.id);
-                const displayIndex = shuffledIndex !== undefined 
-                    ? shuffledIndex 
-                    : (state.study?.tasks.findIndex(t => t.id === task.id) ?? -1);
-                
-                const taskResult = allTaskResults.find(tr => tr.taskIndex === displayIndex);
-                const taskStartTime = taskStartTimes.current.get(displayIndex) || testStartTime.current;
-                const taskTime = Math.floor((Date.now() - taskStartTime) / 1000);
-                const pathTaken = taskPaths.current.get(displayIndex) || [];
-                
-                // Determine outcome based on correct path
-                let outcome: PathOutcome = 'failure';
-                if (taskResult) {
-                    // Check if task was skipped (empty selectedPath)
-                    if (!taskResult.selectedPath || taskResult.selectedPath === "") {
-                        // Determine if direct skip (no interaction) or indirect skip (some interaction)
-                        const clicks = taskClicks.current.get(displayIndex) || 0;
-                        const pathTakenForSkip = taskPaths.current.get(displayIndex) || [];
-                        // If no clicks and no path taken, it's a direct skip
-                        // If there were clicks or path taken, it's an indirect skip
-                        outcome = (clicks === 0 && pathTakenForSkip.length === 0) ? 'direct-skip' : 'indirect-skip';
-                    } else {
-                        // Normalize selected path (remove leading slash, split into parts)
-                        const selectedPathParts = taskResult.selectedPath.split('/').filter(Boolean);
-                        const pathTakenForCheck = taskPaths.current.get(displayIndex) || [];
-                        const correctPaths = task.correctPath || [];
-                        
-                        // Check if selected path matches any correct path
-                        const isCorrect = correctPaths.some(correctPath => {
-                            // correctPath is a string path like "/Online Store/Shop/Categories/Electronics"
-                            const correctParts = correctPath.split('/').filter(Boolean);
-                            // Compare path parts
-                            if (selectedPathParts.length !== correctParts.length) {
-                                return false;
-                            }
-                            return selectedPathParts.every((part, i) => part === correctParts[i]);
-                        });
-                        
-                        if (isCorrect) {
-                            // Check if the actual path taken (navigation history) exactly matches the expected path
-                            // If pathTaken includes extra nodes (detours), it's indirect success
-                            const pathTakenMatchesExactly = correctPaths.some(correctPath => {
-                                const correctParts = correctPath.split('/').filter(Boolean);
-                                // Path taken must match exactly in length and content
-                                if (pathTakenForCheck.length !== correctParts.length) {
-                                    return false;
-                                }
-                                return pathTakenForCheck.every((node, i) => node === correctParts[i]);
-                            });
-                            
-                            // Direct success: path taken exactly matches expected path (no detours)
-                            // Indirect success: reached correct location but took a detour
-                            if (pathTakenMatchesExactly) {
-                                outcome = 'direct-success';
-                            } else {
-                                outcome = 'indirect-success';
-                            }
-                        } else {
-                            outcome = 'failure';
-                        }
-                    }
-                } else {
-                    // No task result at all - treat as direct skip
-                    outcome = 'direct-skip';
-                }
-
-                return {
-                    taskId: task.id,
-                    taskDescription: task.description,
-                    pathTaken: pathTaken,
-                    outcome: outcome,
-                    confidence: taskResult?.confidence,
-                    timeSeconds: taskTime,
-                    timestamp: new Date().toISOString(),
-                };
-            });
+            const taskResults = state.study.tasks.map((task) => calculateTaskResult(task, allTaskResults));
 
             // Build participant result
             const result: ParticipantResult = {
@@ -532,7 +594,6 @@ export function ParticipantView() {
             if (!submitResult.success) {
                 throw new Error(submitResult.error || 'Failed to submit results');
             }
-
             // Success - the ParticipantPreview will show completion message
         } catch (error) {
             console.error("Failed to submit results:", error);
@@ -623,7 +684,7 @@ function ParticipantViewWithTracking({
     handleTaskComplete,
 }: ParticipantViewWithTrackingProps) {
     return (
-        <ParticipantPreview 
+        <ParticipantPreview
             study={study}
             shuffledTasks={shuffledTasks}
             onTestStart={onTestStart}

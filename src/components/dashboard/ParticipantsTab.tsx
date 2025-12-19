@@ -173,7 +173,7 @@ export function ParticipantsTab({ data }: ParticipantsTabProps) {
                                                         ) : (
                                                             <>
                                                                 <XCircle className="h-4 w-4 text-gray-400" />
-                                                                <span className="text-sm text-gray-500">Abandoned</span>
+                                                                <span className="text-sm text-gray-500">Incomplete</span>
                                                             </>
                                                         )}
                                                     </div>

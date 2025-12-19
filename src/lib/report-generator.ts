@@ -10,7 +10,7 @@ export function generateHtmlReport(data: UploadedData): string {
   const stats = calculateOverviewStats(data);
   const tree = data.treeStructure || [];
   const taskStats = calculateTaskStats(data, tree);
-  
+
   // Calculate task results data for stacked bar chart
   const taskResultsData = data.tasks.map((task) => {
     const taskResults = {
@@ -79,7 +79,7 @@ export function generateHtmlReport(data: UploadedData): string {
   // Generate tree structure HTML
   const renderTree = (items: any[], level = 0): string => {
     if (!items || items.length === 0) return '<div class="text-sm text-gray-500 italic">No tree structure available.</div>';
-    
+
     let html = '<div class="space-y-1">';
     items.forEach((item) => {
       const indent = level * 20;
@@ -111,7 +111,7 @@ export function generateHtmlReport(data: UploadedData): string {
     const margin = { top: 20, right: 100, bottom: 40, left: 60 };
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
-    
+
     const maxValue = 100; // Percentage
     const barHeight = chartHeight / taskResultsData.length;
     const barSpacing = 5;
@@ -124,7 +124,7 @@ export function generateHtmlReport(data: UploadedData): string {
     taskResultsData.forEach((task, taskIndex) => {
       const y = taskIndex * barHeight;
       let x = 0;
-      
+
       const categories = [
         { key: 'Direct Success', color: '#22c55e', count: task['Direct Success_count'] },
         { key: 'Indirect Success', color: '#86efac', count: task['Indirect Success_count'] },
@@ -138,7 +138,7 @@ export function generateHtmlReport(data: UploadedData): string {
         const width = (taskValue / maxValue) * chartWidth;
         if (width > 0) {
           svg += `<rect x="${x}" y="${y}" width="${width}" height="${actualBarHeight}" fill="${cat.color}" />`;
-          
+
           // Add data label if segment is large enough
           if (width > 30 && taskValue > 5) {
             const labelX = x + width / 2;
@@ -146,7 +146,7 @@ export function generateHtmlReport(data: UploadedData): string {
             svg += `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="white" font-weight="bold">${Math.round(taskValue)}%</text>`;
             svg += `<text x="${labelX}" y="${labelY + 12}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="white">(${cat.count})</text>`;
           }
-          
+
           x += width;
         }
       });
@@ -170,15 +170,15 @@ export function generateHtmlReport(data: UploadedData): string {
   };
 
   // Generate pie chart SVG
-  const generatePieChart = (pieData: Array<{name: string; value: number; color: string}>, total: number): string => {
+  const generatePieChart = (pieData: Array<{ name: string; value: number; color: string }>, total: number): string => {
     const width = 192;
     const height = 192;
     const radius = Math.min(width, height) / 2;
     const innerRadius = radius * 0.5;
-    
+
     let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
     svg += `<g transform="translate(${width / 2},${height / 2})">`;
-    
+
     const colorMap: Record<string, string> = {
       "bg-green-500": "#22c55e",
       "bg-green-300": "#86efac",
@@ -187,13 +187,13 @@ export function generateHtmlReport(data: UploadedData): string {
       "bg-gray-500": "#6b7280",
       "bg-gray-300": "#d1d5db",
     };
-    
+
     let currentAngle = -Math.PI / 2; // Start at top
-    
+
     pieData.forEach((item) => {
       const sliceAngle = (item.value / total) * 2 * Math.PI;
       const endAngle = currentAngle + sliceAngle;
-      
+
       // Create arc path
       const x1 = Math.cos(currentAngle) * radius;
       const y1 = Math.sin(currentAngle) * radius;
@@ -203,14 +203,14 @@ export function generateHtmlReport(data: UploadedData): string {
       const y1Inner = Math.sin(currentAngle) * innerRadius;
       const x2Inner = Math.cos(endAngle) * innerRadius;
       const y2Inner = Math.sin(endAngle) * innerRadius;
-      
+
       const largeArc = sliceAngle > Math.PI ? 1 : 0;
-      
+
       const path = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x2Inner} ${y2Inner} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x1Inner} ${y1Inner} Z`;
-      
+
       const color = colorMap[item.color] || item.color;
       svg += `<path d="${path}" fill="${color}" stroke="white" stroke-width="2" />`;
-      
+
       // Add label if slice is large enough
       if (sliceAngle > 0.1) {
         const labelAngle = currentAngle + sliceAngle / 2;
@@ -222,49 +222,49 @@ export function generateHtmlReport(data: UploadedData): string {
           svg += `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="bold">${percent}%</text>`;
         }
       }
-      
+
       currentAngle = endAngle;
     });
-    
+
     svg += '</g></svg>';
     return svg;
   };
 
   // Generate box plot SVG
-  const generateBoxPlot = (data: {min: number; q1: number; median: number; q3: number; max: number; displayMax: number}): string => {
+  const generateBoxPlot = (data: { min: number; q1: number; median: number; q3: number; max: number; displayMax: number }): string => {
     const width = 800;
     const height = 128;
     const margin = { left: 40, right: 40 };
     const plotWidth = width - margin.left - margin.right;
-    
+
     const range = data.displayMax - Math.min(data.min, 0);
     const getPosition = (value: number) => {
       const clampedValue = Math.min(value, data.displayMax);
       return margin.left + ((clampedValue - Math.min(data.min, 0)) / range) * plotWidth;
     };
-    
+
     let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
-    
+
     // Main horizontal line
     svg += `<line x1="${getPosition(data.min)}" y1="${height / 2}" x2="${getPosition(Math.min(data.max, data.displayMax))}" y2="${height / 2}" stroke="#d1d5db" stroke-width="2" />`;
-    
+
     // Box (Q1 to Q3)
     const boxLeft = getPosition(data.q1);
     const boxRight = getPosition(data.q3);
     const boxHeight = 48;
     svg += `<rect x="${boxLeft}" y="${height / 2 - boxHeight / 2}" width="${boxRight - boxLeft}" height="${boxHeight}" fill="#dbeafe" stroke="#93c5fd" stroke-width="1" />`;
-    
+
     // Median line
     svg += `<line x1="${getPosition(data.median)}" y1="${height / 2 - boxHeight / 2}" x2="${getPosition(data.median)}" y2="${height / 2 + boxHeight / 2}" stroke="#2563eb" stroke-width="2" />`;
-    
+
     // Whiskers
     svg += `<line x1="${getPosition(data.min)}" y1="${height / 2 - 24}" x2="${getPosition(data.min)}" y2="${height / 2 + 24}" stroke="#9ca3af" stroke-width="1" />`;
     svg += `<line x1="${getPosition(Math.min(data.max, data.displayMax))}" y1="${height / 2 - 24}" x2="${getPosition(Math.min(data.max, data.displayMax))}" y2="${height / 2 + 24}" stroke="#9ca3af" stroke-width="1" />`;
-    
+
     // Connecting lines
     svg += `<line x1="${getPosition(data.min)}" y1="${height / 2}" x2="${getPosition(data.q1)}" y2="${height / 2}" stroke="#d1d5db" stroke-width="2" />`;
     svg += `<line x1="${getPosition(data.q3)}" y1="${height / 2}" x2="${getPosition(Math.min(data.max, data.displayMax))}" y2="${height / 2}" stroke="#d1d5db" stroke-width="2" />`;
-    
+
     // Labels
     const labels = [
       { value: data.min, label: 'Min', y: height - 16 },
@@ -273,13 +273,13 @@ export function generateHtmlReport(data: UploadedData): string {
       { value: data.q3, label: 'Q3', y: 16 },
       { value: Math.min(data.max, data.displayMax), label: data.max > data.displayMax ? `Max (${data.max}s ▶)` : 'Max', y: height - 16 },
     ];
-    
+
     labels.forEach(({ value, label, y }) => {
       const x = getPosition(value);
       svg += `<text x="${x}" y="${y}" text-anchor="middle" font-size="10" fill="#6b7280" font-weight="600">${label}</text>`;
       svg += `<text x="${x}" y="${y + 12}" text-anchor="middle" font-size="10" fill="#6b7280">${value}s</text>`;
     });
-    
+
     svg += '</svg>';
     return svg;
   };
@@ -482,11 +482,11 @@ export function generateHtmlReport(data: UploadedData): string {
         </div>
         <div class="stat-card">
           <div class="stat-value">${(() => {
-            const totalSeconds = Math.round(stats.medianCompletionTime);
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-          })()}</div>
+      const totalSeconds = Math.round(stats.medianCompletionTime);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+    })()}</div>
           <div class="stat-label">Median Time</div>
           <div class="stat-label" style="margin-top: 4px;">Range: ${Math.round(stats.shortestCompletionTime)}s - ${Math.round(stats.longestCompletionTime)}s</div>
         </div>
@@ -517,41 +517,41 @@ export function generateHtmlReport(data: UploadedData): string {
     <div class="section">
       <h2 class="section-title">Tasks Analysis</h2>
       ${taskStats.map((task) => {
-        const totalParticipants = task.stats.breakdown.total;
-        const pieData = [
-          { name: "Direct Success", value: task.stats.breakdown.directSuccess, color: "bg-green-500" },
-          { name: "Indirect Success", value: task.stats.breakdown.indirectSuccess, color: "bg-green-300" },
-          { name: "Fail", value: task.stats.breakdown.fail, color: "bg-red-500" },
-          { name: "Skip", value: task.stats.breakdown.directSkip + task.stats.breakdown.indirectSkip, color: "bg-gray-500" },
-        ].filter((d) => d.value > 0);
+      const totalParticipants = task.stats.breakdown.total;
+      const pieData = [
+        { name: "Direct Success", value: task.stats.breakdown.directSuccess, color: "bg-green-500" },
+        { name: "Indirect Success", value: task.stats.breakdown.indirectSuccess, color: "bg-green-300" },
+        { name: "Fail", value: task.stats.breakdown.fail, color: "bg-red-500" },
+        { name: "Skip", value: task.stats.breakdown.directSkip + task.stats.breakdown.indirectSkip, color: "bg-gray-500" },
+      ].filter((d) => d.value > 0);
 
-        // Get participant paths for this task
-        const pathMap = new Map<string, {path: string; count: number; resultType: string; resultColor: string}>();
-        data.participants.forEach(p => {
-          const result = p.taskResults.find(r => r.taskId === task.id || r.taskIndex === task.index);
-          if (!result) return;
-          const path = result.pathTaken || "";
-          let resultType = "";
-          let resultColor = "";
-          if (result.skipped) {
-            resultType = result.directPathTaken ? "Direct Skip" : "Indirect Skip";
-            resultColor = result.directPathTaken ? "#9ca3af" : "#6b7280";
-          } else if (result.successful) {
-            resultType = result.directPathTaken ? "Direct Success" : "Indirect Success";
-            resultColor = result.directPathTaken ? "#22c55e" : "#86efac";
-          } else {
-            resultType = "Fail";
-            resultColor = "#ef4444";
-          }
-          const key = path + "||" + resultType;
-          if (!pathMap.has(key)) {
-            pathMap.set(key, { path, count: 0, resultType, resultColor });
-          }
-          pathMap.get(key)!.count++;
-        });
-        const participantPaths = Array.from(pathMap.values()).sort((a, b) => b.count - a.count);
+      // Get participant paths for this task
+      const pathMap = new Map<string, { path: string; count: number; resultType: string; resultColor: string }>();
+      data.participants.forEach(p => {
+        const result = p.taskResults.find(r => r.taskId === task.id || r.taskIndex === task.index);
+        if (!result) return;
+        const path = result.pathTaken || "";
+        let resultType = "";
+        let resultColor = "";
+        if (result.skipped) {
+          resultType = result.directPathTaken ? "Direct Skip" : "Indirect Skip";
+          resultColor = result.directPathTaken ? "#9ca3af" : "#6b7280";
+        } else if (result.successful) {
+          resultType = result.directPathTaken ? "Direct Success" : "Indirect Success";
+          resultColor = result.directPathTaken ? "#22c55e" : "#86efac";
+        } else {
+          resultType = "Fail";
+          resultColor = "#ef4444";
+        }
+        const key = path + "||" + resultType;
+        if (!pathMap.has(key)) {
+          pathMap.set(key, { path, count: 0, resultType, resultColor });
+        }
+        pathMap.get(key)!.count++;
+      });
+      const participantPaths = Array.from(pathMap.values()).sort((a, b) => b.count - a.count);
 
-        return `
+      return `
         <div class="task-section">
           <div class="card">
             <div class="card-title">Task ${task.index}: ${escapeHtml(task.description)}</div>
@@ -575,10 +575,10 @@ export function generateHtmlReport(data: UploadedData): string {
                 </thead>
                 <tbody>
                   ${task.stats.parentNodeStats.level1 ? (() => {
-                    const margin = Math.sqrt((task.stats.parentNodeStats!.level1.rate * (100 - task.stats.parentNodeStats!.level1.rate)) / task.stats.parentNodeStats!.level1.total) * 1.96;
-                    const expectedAnswers = task.expectedAnswer.split(',').map(a => a.trim()).filter(a => a.length > 0);
-                    const expectedPaths = Array.from(new Set(expectedAnswers.map(path => getPathUpToLevel(path, 1)).filter(p => p.length > 0)));
-                    return `
+            const margin = Math.sqrt((task.stats.parentNodeStats!.level1.rate * (100 - task.stats.parentNodeStats!.level1.rate)) / task.stats.parentNodeStats!.level1.total) * 1.96;
+            const expectedAnswers = task.expectedAnswer.split(',').map(a => a.trim()).filter(a => a.length > 0);
+            const expectedPaths = Array.from(new Set(expectedAnswers.map(path => getPathUpToLevel(path, 1)).filter(p => p.length > 0)));
+            return `
                     <tr>
                       <td>1st Level</td>
                       <td style="font-family: monospace; font-size: 12px;">
@@ -589,12 +589,12 @@ export function generateHtmlReport(data: UploadedData): string {
                       <td style="color: #6b7280; font-size: 12px;">±${margin.toFixed(1)}%</td>
                     </tr>
                     `;
-                  })() : ''}
+          })() : ''}
                   ${task.stats.parentNodeStats.level2 ? (() => {
-                    const margin = Math.sqrt((task.stats.parentNodeStats!.level2!.rate * (100 - task.stats.parentNodeStats!.level2!.rate)) / task.stats.parentNodeStats!.level2!.total) * 1.96;
-                    const expectedAnswers = task.expectedAnswer.split(',').map(a => a.trim()).filter(a => a.length > 0);
-                    const expectedPaths = Array.from(new Set(expectedAnswers.map(path => getPathUpToLevel(path, 2)).filter(p => p.length > 0)));
-                    return `
+            const margin = Math.sqrt((task.stats.parentNodeStats!.level2!.rate * (100 - task.stats.parentNodeStats!.level2!.rate)) / task.stats.parentNodeStats!.level2!.total) * 1.96;
+            const expectedAnswers = task.expectedAnswer.split(',').map(a => a.trim()).filter(a => a.length > 0);
+            const expectedPaths = Array.from(new Set(expectedAnswers.map(path => getPathUpToLevel(path, 2)).filter(p => p.length > 0)));
+            return `
                     <tr>
                       <td>2nd Level</td>
                       <td style="font-family: monospace; font-size: 12px;">
@@ -605,12 +605,12 @@ export function generateHtmlReport(data: UploadedData): string {
                       <td style="color: #6b7280; font-size: 12px;">±${margin.toFixed(1)}%</td>
                     </tr>
                     `;
-                  })() : ''}
+          })() : ''}
                   ${task.stats.parentNodeStats.level3 ? (() => {
-                    const margin = Math.sqrt((task.stats.parentNodeStats!.level3!.rate * (100 - task.stats.parentNodeStats!.level3!.rate)) / task.stats.parentNodeStats!.level3!.total) * 1.96;
-                    const expectedAnswers = task.expectedAnswer.split(',').map(a => a.trim()).filter(a => a.length > 0);
-                    const expectedPaths = Array.from(new Set(expectedAnswers.map(path => getPathUpToLevel(path, 3)).filter(p => p.length > 0)));
-                    return `
+            const margin = Math.sqrt((task.stats.parentNodeStats!.level3!.rate * (100 - task.stats.parentNodeStats!.level3!.rate)) / task.stats.parentNodeStats!.level3!.total) * 1.96;
+            const expectedAnswers = task.expectedAnswer.split(',').map(a => a.trim()).filter(a => a.length > 0);
+            const expectedPaths = Array.from(new Set(expectedAnswers.map(path => getPathUpToLevel(path, 3)).filter(p => p.length > 0)));
+            return `
                     <tr>
                       <td>3rd Level</td>
                       <td style="font-family: monospace; font-size: 12px;">
@@ -621,7 +621,7 @@ export function generateHtmlReport(data: UploadedData): string {
                       <td style="color: #6b7280; font-size: 12px;">±${margin.toFixed(1)}%</td>
                     </tr>
                     `;
-                  })() : ''}
+          })() : ''}
                 </tbody>
               </table>
             </div>
@@ -641,20 +641,20 @@ export function generateHtmlReport(data: UploadedData): string {
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 12px;">
                   ${pieData.map((item) => {
-                    const colorMap: Record<string, string> = {
-                      "bg-green-500": "#22c55e",
-                      "bg-green-300": "#86efac",
-                      "bg-red-500": "#ef4444",
-                      "bg-red-300": "#fca5a5",
-                      "bg-gray-500": "#6b7280",
-                    };
-                    return `
+            const colorMap: Record<string, string> = {
+              "bg-green-500": "#22c55e",
+              "bg-green-300": "#86efac",
+              "bg-red-500": "#ef4444",
+              "bg-red-300": "#fca5a5",
+              "bg-gray-500": "#6b7280",
+            };
+            return `
                     <div style="display: flex; align-items: center; gap: 8px;">
                       <div style="width: 12px; height: 12px; border-radius: 2px; background: ${colorMap[item.color] || item.color};"></div>
                       <span>${item.name}: ${item.value} (${Math.round((item.value / totalParticipants) * 100)}%)</span>
                     </div>
                     `;
-                  }).join('')}
+          }).join('')}
                 </div>
               </div>
 
@@ -687,13 +687,13 @@ export function generateHtmlReport(data: UploadedData): string {
             <div style="margin-bottom: 32px;">
               <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 16px;">Time Distribution</h4>
               ${generateBoxPlot({
-                min: task.stats.time.min,
-                q1: task.stats.time.q1,
-                median: task.stats.time.median,
-                q3: task.stats.time.q3,
-                max: task.stats.time.max,
-                displayMax: Math.max(task.stats.time.max, 60),
-              })}
+            min: task.stats.time.min,
+            q1: task.stats.time.q1,
+            median: task.stats.time.median,
+            q3: task.stats.time.q3,
+            max: task.stats.time.max,
+            displayMax: Math.max(task.stats.time.max, 60),
+          })}
             </div>
 
             <!-- Participant Paths -->
@@ -828,18 +828,18 @@ export function generateHtmlReport(data: UploadedData): string {
                 </thead>
                 <tbody>
                   ${task.stats.confidenceRatings.sort((a, b) => b.value - a.value).map((rating) => {
-                    const total = rating.count;
-                    const hasData = total > 0;
-                    const getConfidenceLabel = (val: number) => {
-                      if (val === 7) return "Very Confident";
-                      if (val === 6) return "Confident";
-                      if (val === 5) return "Somewhat Confident";
-                      if (val === 4) return "Neutral";
-                      if (val === 3) return "Somewhat Not Confident";
-                      if (val === 2) return "Not Confident";
-                      return "Not Confident At All";
-                    };
-                    return `
+            const total = rating.count;
+            const hasData = total > 0;
+            const getConfidenceLabel = (val: number) => {
+              if (val === 7) return "Very Confident";
+              if (val === 6) return "Confident";
+              if (val === 5) return "Somewhat Confident";
+              if (val === 4) return "Neutral";
+              if (val === 3) return "Somewhat Not Confident";
+              if (val === 2) return "Not Confident";
+              return "Not Confident At All";
+            };
+            return `
                     <tr>
                       <td style="font-weight: 600;">${getConfidenceLabel(rating.value)}</td>
                       <td>
@@ -868,7 +868,7 @@ export function generateHtmlReport(data: UploadedData): string {
                       <td style="text-align: center; font-weight: 600;">${rating.count}</td>
                     </tr>
                     `;
-                  }).join('')}
+          }).join('')}
                 </tbody>
               </table>
               <div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; font-size: 12px;">
@@ -890,7 +890,7 @@ export function generateHtmlReport(data: UploadedData): string {
           </div>
         </div>
         `;
-      }).join('')}
+    }).join('')}
     </div>
 
     <!-- Participants Section -->
@@ -910,48 +910,48 @@ export function generateHtmlReport(data: UploadedData): string {
           </thead>
           <tbody>
             ${data.participants.map((p, index) => {
-              const completedTasks = p.taskResults.filter(r => !r.skipped);
-              const successfulTasks = completedTasks.filter(r => r.successful);
-              const directTasks = completedTasks.filter(r => r.directPathTaken);
-              const successRate = completedTasks.length > 0 ? Math.round((successfulTasks.length / completedTasks.length) * 100) : 0;
-              const directnessRate = completedTasks.length > 0 ? Math.round((directTasks.length / completedTasks.length) * 100) : 0;
-              
-              const formatDuration = (seconds: number | null) => {
-                if (!seconds) return "N/A";
-                const mins = Math.floor(seconds / 60);
-                const secs = Math.round(seconds % 60);
-                return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-              };
+      const completedTasks = p.taskResults.filter(r => !r.skipped);
+      const successfulTasks = completedTasks.filter(r => r.successful);
+      const directTasks = completedTasks.filter(r => r.directPathTaken);
+      const successRate = completedTasks.length > 0 ? Math.round((successfulTasks.length / completedTasks.length) * 100) : 0;
+      const directnessRate = completedTasks.length > 0 ? Math.round((directTasks.length / completedTasks.length) * 100) : 0;
 
-              const formatDate = (date: Date | null) => {
-                if (!date) return "N/A";
-                return new Date(date).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
-              };
+      const formatDuration = (seconds: number | null) => {
+        if (!seconds) return "N/A";
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.round(seconds % 60);
+        return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      };
 
-              const getResultBadge = (result: any) => {
-                if (result.skipped) {
-                  return '<span style="font-size: 12px; color: #6b7280;">Skipped</span>';
-                }
-                if (result.successful && result.directPathTaken) {
-                  return '<span style="font-size: 12px; font-weight: 600; color: #16a34a;">✓ Direct Success</span>';
-                }
-                if (result.successful && !result.directPathTaken) {
-                  return '<span style="font-size: 12px; font-weight: 600; color: #22c55e;">✓ Indirect Success</span>';
-                }
-                return '<span style="font-size: 12px; font-weight: 600; color: #dc2626;">✗ Fail</span>';
-              };
-              
-              return `
+      const formatDate = (date: Date | null) => {
+        if (!date) return "N/A";
+        return new Date(date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      };
+
+      const getResultBadge = (result: any) => {
+        if (result.skipped) {
+          return '<span style="font-size: 12px; color: #6b7280;">Skipped</span>';
+        }
+        if (result.successful && result.directPathTaken) {
+          return '<span style="font-size: 12px; font-weight: 600; color: #16a34a;">✓ Direct Success</span>';
+        }
+        if (result.successful && !result.directPathTaken) {
+          return '<span style="font-size: 12px; font-weight: 600; color: #22c55e;">✓ Indirect Success</span>';
+        }
+        return '<span style="font-size: 12px; font-weight: 600; color: #dc2626;">✗ Fail</span>';
+      };
+
+      return `
               <tr style="border-bottom: 2px solid #e5e7eb;">
                 <td style="font-weight: 600;">Participant ${index + 1}</td>
                 <td>
-                  ${p.status === "Completed" ? '<span style="color: #16a34a; font-size: 14px;">✓ Completed</span>' : '<span style="color: #6b7280; font-size: 14px;">○ Abandoned</span>'}
+                  ${p.status === "Completed" ? '<span style="color: #16a34a; font-size: 14px;">✓ Completed</span>' : '<span style="color: #6b7280; font-size: 14px;">○ Incomplete</span>'}
                 </td>
                 <td style="font-size: 14px; color: #4b5563;">${formatDate(p.startedAt)}</td>
                 <td style="font-size: 14px; color: #4b5563;">${formatDuration(p.durationSeconds)}</td>
@@ -1019,7 +1019,7 @@ export function generateHtmlReport(data: UploadedData): string {
                 </td>
               </tr>
               `;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>
@@ -1037,7 +1037,7 @@ export function generateHtmlReport(data: UploadedData): string {
 export function downloadHtmlReport(data: UploadedData): void {
   const html = generateHtmlReport(data);
   const filename = `tree-test-report-${data.name ? data.name.replace(/[^a-z0-9]/gi, '-').toLowerCase() : 'untitled'}-${new Date().toISOString().split('T')[0]}.html`;
-  
+
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
